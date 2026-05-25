@@ -537,7 +537,8 @@ types.forEach(t => {
 });
 
 // Init graph FIRST (before toggle setup which calls updateVisibility)
-const Graph = ForceGraph(document.getElementById('graph'))(data);
+const Graph = new ForceGraph(document.getElementById('graph'))
+  .graphData(data);
 
 // Toggles
 const toggles = document.getElementById('toggles');
