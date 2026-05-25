@@ -33,7 +33,6 @@
     .toggle-btn.active { background: #306090; border-color: #5090c0; color: #fff; }
   </style>
 </head>
->
 <body>
   <div id="graph"></div>
   <div id="info">
@@ -537,6 +536,9 @@ types.forEach(t => {
   legend.appendChild(div);
 });
 
+// Init graph FIRST (before toggle setup which calls updateVisibility)
+const Graph = ForceGraph(document.getElementById('graph'))(data);
+
 // Toggles
 const toggles = document.getElementById('toggles');
 const toggleTypes = ['skill', 'category', 'memory', 'project', 'config'];
@@ -573,9 +575,6 @@ function updateVisibility() {
   };
   Graph.graphData(graphData);
 }
-
-// Init graph
-const Graph = ForceGraph(document.getElementById('graph'))(data);
 
 // Config
 Graph.backgroundColor('#0d0d0d')
