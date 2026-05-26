@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>Hermes Knowledge Graph</title>
-  <script src="vendor/force-graph.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #0d0d0d; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
@@ -18,8 +17,6 @@
     #info .legend-item { display: flex; align-items: center; gap: 8px; }
     #info .dot { width: 10px; height: 10px; border-radius: 50%; }
     #info .desc { color: #888; font-size: 11px; margin-top: 8px; }
-    #info code { background: #222; padding: 2px 6px; border-radius: 4px; font-size: 11px; color: #7eb8da; }
-    #info pre { background: #1a1a1a; padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 11px; overflow-x: auto; }
     .link-type-toggle {
       position: fixed; bottom: 20px; left: 20px; background: rgba(20,20,20,0.95);
       border: 1px solid #333; border-radius: 8px; padding: 12px; z-index: 100;
@@ -37,566 +34,244 @@
   <div id="graph"></div>
   <div id="info">
     <h1>🔮 Hermes Knowledge Graph</h1>
-    <div id="detail">Click any node to explore</div>
+    <div id="detail">Loading...</div>
     <div class="legend" id="legend"></div>
     <div class="desc">Scroll to zoom • drag to pan • drag nodes to rearrange</div>
   </div>
   <div class="link-type-toggle" id="toggles"></div>
 
-<script>
-const COLORS = {
-  skill: '#5b8fd9',
-  memory: '#d97b5b',
-  config: '#7ec87a',
-  agent: '#c07bd4',
-  project: '#d4c45b',
-  session: '#5bc4c4',
-  other: '#888'
-};
+  <script type="module">
+    import ForceGraph from 'https://cdn.jsdelivr.net/npm/force-graph@1.43.5/dist/force-graph.mjs';
 
-const COLOR_HEX = {
-  skill: 0x5b8fd9,
-  memory: 0xd97b5b,
-  config: 0x7ec87a,
-  agent: 0xc07bd4,
-  project: 0xd4c45b,
-  session: 0x5bc4c4,
-  other: 0x888888
-};
+    // ── Data ──────────────────────────────────────────────────────────────────
+    const COLORS = {
+      skill: '#5b8fd9', memory: '#d97b5b', config: '#7ec87a',
+      agent: '#c07bd4', project: '#d4c45b', session: '#5bc4c4', other: '#888'
+    };
 
-// Category to color mapping
-const CATEGORY_COLORS = {
-  'autonomous-ai-agents': 0x7ec87a,
-  'creative': 0xd4c45b,
-  'data-science': 0x5bc4c4,
-  'devops': 0x5b8fd9,
-  'dogfood': 0xc07bd4,
-  'email': 0xd97b5b,
-  'gaming': 0x88d97b,
-  'github': 0x7ec87a,
-  'mcp': 0x5b8fd9,
-  'media': 0xd97b5b,
-  'mlops': 0xc07bd4,
-  'morning-briefing': 0x5bc4c4,
-  'note-taking': 0x88d97b,
-  'openclaw-imports': 0xc07bd4,
-  'planning': 0x7ec87a,
-  'productivity': 0x5b8fd9,
-  'red-teaming': 0xd97b5b,
-  'repo-transmute': 0x5bc4c4,
-  'research': 0x5b8fd9,
-  'smart-home': 0x88d97b,
-  'social-media': 0xd97b5b,
-  'software-development': 0x7ec87a,
-  'yuanbao': 0xc07bd4,
-  'agents': 0xc07bd4,
-  'memory': 0xd97b5b,
-  'config': 0x888888,
-  'project': 0xd4c45b
-};
+    const CATEGORY_COLORS = {
+      'autonomous-ai-agents': 0x7ec87a, 'creative': 0xd4c45b, 'data-science': 0x5bc4c4,
+      'devops': 0x5b8fd9, 'dogfood': 0xc07bd4, 'email': 0xd97b5b, 'gaming': 0x88d97b,
+      'github': 0x7ec87a, 'mcp': 0x5b8fd9, 'media': 0xd97b5b, 'mlops': 0xc07bd4,
+      'morning-briefing': 0x5bc4c4, 'note-taking': 0x88d97b, 'openclaw-imports': 0xc07bd4,
+      'planning': 0x7ec87a, 'productivity': 0x5b8fd9, 'red-teaming': 0xd97b5b,
+      'repo-transmute': 0x5bc4c4, 'research': 0x5b8fd9, 'smart-home': 0x88d97b,
+      'social-media': 0xd97b5b, 'software-development': 0x7ec87a, 'yuanbao': 0xc07bd4,
+      'agents': 0xc07bd4, 'memory': 0xd97b5b, 'config': 0x888888, 'project': 0xd4c45b
+    };
 
-// Skill categories
-const skillCategories = [
-  'autonomous-ai-agents', 'creative', 'data-science', 'devops', 'dogfood',
-  'email', 'gaming', 'github', 'mcp', 'media', 'mlops',
-  'morning-briefing', 'note-taking', 'openclaw-imports', 'planning',
-  'productivity', 'red-teaming', 'repo-transmute', 'research',
-  'smart-home', 'social-media', 'software-development', 'yuanbao'
-];
+    const categoryLabels = {
+      'autonomous-ai-agents': '🤖 Auto AI Agents', 'creative': '🎨 Creative',
+      'data-science': '📊 Data Science', 'devops': '⚙️ DevOps', 'dogfood': '🐕 Dogfood',
+      'email': '📧 Email', 'gaming': '🎮 Gaming', 'github': '🐙 GitHub', 'mcp': '🔌 MCP',
+      'media': '🎬 Media', 'mlops': '🧠 MLOps', 'morning-briefing': '🌅 Morning',
+      'note-taking': '📝 Notes', 'openclaw-imports': '🦋 OpenClaw', 'planning': '📋 Planning',
+      'productivity': '⚡ Productivity', 'red-teaming': '☠️ Red Team',
+      'repo-transmute': '🔄 Repo Transmute', 'research': '🔍 Research',
+      'smart-home': '🏠 Smart Home', 'social-media': '📱 Social',
+      'software-development': '💻 Dev', 'yuanbao': '💬 Yuanbao'
+    };
 
-const categoryLabels = {
-  'autonomous-ai-agents': '🤖 Auto AI Agents',
-  'creative': '🎨 Creative',
-  'data-science': '📊 Data Science',
-  'devops': '⚙️ DevOps',
-  'dogfood': '🐕 Dogfood',
-  'email': '📧 Email',
-  'gaming': '🎮 Gaming',
-  'github': '🐙 GitHub',
-  'mcp': '🔌 MCP',
-  'media': '🎬 Media',
-  'mlops': '🧠 MLOps',
-  'morning-briefing': '🌅 Morning',
-  'note-taking': '📝 Notes',
-  'openclaw-imports': '🦋 OpenClaw',
-  'planning': '📋 Planning',
-  'productivity': '⚡ Productivity',
-  'red-teaming': '☠️ Red Team',
-  'repo-transmute': '🔄 Repo Transmute',
-  'research': '🔍 Research',
-  'smart-home': '🏠 Smart Home',
-  'social-media': '📱 Social',
-  'software-development': '💻 Dev',
-  'yuanbao': '💬 Yuanbao'
-};
+    const nodes = [];
+    const links = [];
+    const nodeMap = new Map();
 
-const categoryLabelsShort = {
-  'autonomous-ai-agents': 'Auto AI',
-  'creative': 'Creative',
-  'data-science': 'Data Sci',
-  'devops': 'DevOps',
-  'dogfood': 'Dogfood',
-  'email': 'Email',
-  'gaming': 'Gaming',
-  'github': 'GitHub',
-  'mcp': 'MCP',
-  'media': 'Media',
-  'mlops': 'MLOps',
-  'morning-briefing': 'Morning',
-  'note-taking': 'Notes',
-  'openclaw-imports': 'OpenClaw',
-  'planning': 'Planning',
-  'productivity': 'Productivity',
-  'red-teaming': 'Red Team',
-  'repo-transmute': 'Repo Trans',
-  'research': 'Research',
-  'smart-home': 'Smart',
-  'social-media': 'Social',
-  'software-development': 'Dev',
-  'yuanbao': 'Yuanbao'
-};
-
-// Build graph data
-const nodes = [];
-const links = [];
-const nodeMap = new Map();
-
-// Node class
-function makeNode(id, label, type, size, category, description) {
-  const n = { id, label, type, size, category, description };
-  nodeMap.set(id, n);
-  return n;
-}
-
-// Skill nodes (89 skills, grouped by category)
-const skillNodes = [
-  // autonomous-ai-agents
-  { cat: 'autonomous-ai-agents', name: 'claude-code', desc: 'Delegate to Claude Code CLI' },
-  { cat: 'autonomous-ai-agents', name: 'codex', desc: 'Delegate to OpenAI Codex' },
-  { cat: 'autonomous-ai-agents', name: 'hermes-agent', desc: 'Use/configure Hermes Agent CLI' },
-  { cat: 'autonomous-ai-agents', name: 'opencode', desc: 'Delegate to OpenCode CLI' },
-  { cat: 'autonomous-ai-agents', name: 'kanban-codex-lane', desc: 'Kanban Codex worker lane' },
-  { cat: 'autonomous-ai-agents', name: 'multi-provider-llm-backoff', desc: 'Multi-provider LLM w/ backoff' },
-  { cat: 'autonomous-ai-agents', name: 'roadmap-engine', desc: 'Long-horizon autonomous planning' },
-  { cat: 'autonomous-ai-agents', name: 'self-improvement-engine', desc: 'Self-improvement from roadmap' },
-
-  // agents (core agents)
-  { cat: 'agents', name: 'main', desc: 'Primary session agent' },
-  { cat: 'agents', name: 'zoul', desc: 'Primary orchestrator' },
-  { cat: 'agents', name: 'codi', desc: 'Code ingestion & refactoring' },
-  { cat: 'agents', name: 'coach', desc: 'Learning & guidance' },
-  { cat: 'agents', name: 'researcher', desc: 'Web research' },
-  { cat: 'agents', name: 'planner', desc: 'Task decomposition' },
-  { cat: 'agents', name: 'coder', desc: 'Code generation' },
-  { cat: 'agents', name: 'reviewer', desc: 'Quality assurance' },
-  { cat: 'agents', name: 'knowledge-manager', desc: 'Long-term memory' },
-  { cat: 'agents', name: 'automator', desc: 'Background tasks' },
-  { cat: 'agents', name: 'browser-agent', desc: 'Web automation' },
-  { cat: 'agents', name: 'journal', desc: 'Notion logging' },
-  { cat: 'agents', name: 'nginxmanagerbot', desc: 'DNS management' },
-  { cat: 'agents', name: 'mediamaker', desc: 'Video creation' },
-  { cat: 'agents', name: 'heartbeat', desc: 'Proactive monitoring' },
-  { cat: 'agents', name: 'curriculum-design', desc: 'NESA UbD design' },
-  { cat: 'agents', name: 'ubd-docx-generator', desc: 'UbD docx generator' },
-  { cat: 'agents', name: 'react-agent', desc: 'React development' },
-
-  // creative
-  { cat: 'creative', name: 'architecture-diagram', desc: 'Dark SVG architecture diagrams' },
-  { cat: 'creative', name: 'ascii-art', desc: 'ASCII art generation' },
-  { cat: 'creative', name: 'ascii-video', desc: 'Video to ASCII' },
-  { cat: 'creative', name: 'baoyu-article-illustrator', desc: 'Article illustrations' },
-  { cat: 'creative', name: 'baoyu-comic', desc: 'Knowledge comics' },
-  { cat: 'creative', name: 'baoyu-infographic', desc: 'Infographics' },
-  { cat: 'creative', name: 'claude-design', desc: 'One-off HTML artifacts' },
-  { cat: 'creative', name: 'comfyui', desc: 'ComfyUI image/video generation' },
-  { cat: 'creative', name: 'design-md', desc: 'Google DESIGN.md token spec' },
-  { cat: 'creative', name: 'excalidraw', desc: 'Hand-drawn diagrams' },
-  { cat: 'creative', name: 'humanizer', desc: 'Strip AI-isms from text' },
-  { cat: 'creative', name: 'ideation', desc: 'Project idea generation' },
-  { cat: 'creative', name: 'manim-video', desc: '3Blue1Brown math animations' },
-  { cat: 'creative', name: 'p5js', desc: 'p5.js sketches & shaders' },
-  { cat: 'creative', name: 'pixel-art', desc: 'Pixel art w/ era palettes' },
-  { cat: 'creative', name: 'popular-web-designs', desc: '54 real design systems' },
-  { cat: 'creative', name: 'pretext', desc: 'Creative browser demos' },
-  { cat: 'creative', name: 'sketch', desc: 'HTML mockups' },
-  { cat: 'creative', name: 'songwriting-and-ai-music', desc: 'Suno AI music prompts' },
-  { cat: 'creative', name: 'touchdesigner-mcp', desc: 'TouchDesigner control' },
-
-  // data-science
-  { cat: 'data-science', name: 'jupyter-live-kernel', desc: 'Iterative Python via Jupyter' },
-
-  // devops
-  { cat: 'devops', name: 'agent-os-architecture', desc: 'Agent-os Node/Express architecture' },
-  { cat: 'devops', name: 'canary-watch', desc: 'Post-deploy monitoring' },
-  { cat: 'devops', name: 'casaos-webhook-emitter-impl', desc: 'CasaOS webhook Go service' },
-  { cat: 'devops', name: 'context-budget', desc: 'Context window audit' },
-  { cat: 'devops', name: 'cost-aware-llm-pipeline', desc: 'Cost optimization for LLM APIs' },
-  { cat: 'devops', name: 'deployment-patterns', desc: 'Deployment workflows/CI/CD' },
-  { cat: 'devops', name: 'docker-patterns', desc: 'Docker & Compose patterns' },
-  { cat: 'devops', name: 'git-workflow', desc: 'Git branching strategies' },
-  { cat: 'devops', name: 'go', desc: 'Go build/test/run' },
-  { cat: 'devops', name: 'hermes-docker-sync-setup', desc: 'Hermes sync: GitHub + Docker' },
-  { cat: 'devops', name: 'infrastructure-as-code', desc: 'Terraform Cloudflare/AWS' },
-  { cat: 'devops', name: 'kanban-orchestrator', desc: 'Kanban decomposition playbook' },
-  { cat: 'devops', name: 'kanban-worker', desc: 'Kanban worker pitfalls' },
-  { cat: 'devops', name: 'multi-provider-api-calls', desc: 'Multi-provider API calls' },
-  { cat: 'devops', name: 'nanobot-to-hermes-migration', desc: 'Nanobot to Hermes migration' },
-  { cat: 'devops', name: 'repo-init', desc: 'Initialize new project repos' },
-  { cat: 'devops', name: 'repo-catalog', desc: 'Comprehensive repo catalog' },
-  { cat: 'devops', name: 'webhook-subscriptions', desc: 'Event-driven agent runs' },
-
-  // discord-bot
-  { cat: 'discord-bot', name: 'discord-bot', desc: 'Post to Discord via REST API' },
-
-  // dogfood
-  { cat: 'dogfood', name: 'dogfood', desc: 'Exploratory QA of web apps' },
-
-  // email
-  { cat: 'email', name: 'himalaya', desc: 'IMAP/SMTP email from terminal' },
-
-  // gaming
-  { cat: 'gaming', name: 'minecraft-modpack-server', desc: 'Host modded Minecraft servers' },
-  { cat: 'gaming', name: 'pokemon-player', desc: 'Play Pokemon via headless emulator' },
-
-  // github
-  { cat: 'github', name: 'codebase-inspection', desc: 'LOC, languages, ratios via pygount' },
-  { cat: 'github', name: 'github-auth', desc: 'GitHub HTTPS tokens + SSH + gh CLI' },
-  { cat: 'github', name: 'github-code-review', desc: 'PR diffs + inline comments' },
-  { cat: 'github', name: 'github-issues', desc: 'Create/triage/label/assign issues' },
-  { cat: 'github', name: 'github-pr-workflow', desc: 'Branch, commit, open, CI, merge' },
-  { cat: 'github', name: 'github-repo-management', desc: 'Clone/create/fork repos' },
-  { cat: 'github', name: 'repo-discovery', desc: 'Locate and assess code repos' },
-
-  // mcp
-  { cat: 'mcp', name: 'native-mcp', desc: 'MCP client: stdio/HTTP servers' },
-
-  // media
-  { cat: 'media', name: 'gif-search', desc: 'GIF search from Tenor' },
-  { cat: 'media', name: 'heartmula', desc: 'Suno-like song generation' },
-  { cat: 'media', name: 'songsee', desc: 'Audio spectrograms/features' },
-  { cat: 'media', name: 'spotify', desc: 'Spotify play/search/queue' },
-  { cat: 'media', name: 'youtube-content', desc: 'YouTube transcripts to summaries' },
-
-  // mlops
-  { cat: 'mlops', name: 'huggingface-hub', desc: 'HF CLI: search/download/upload models' },
-  { cat: 'mlops/evaluation', name: 'lm-evaluation-harness', desc: '60+ academic benchmarks' },
-  { cat: 'mlops/evaluation', name: 'weights-and-biases', desc: 'W&B: ML experiment tracking' },
-  { cat: 'mlops/inference', name: 'llama-cpp', desc: 'Local GGUF inference' },
-  { cat: 'mlops/inference', name: 'obliteratus', desc: 'Abliterate LLM refusals' },
-  { cat: 'mlops/inference', name: 'outlines', desc: 'Structured JSON/regex generation' },
-  { cat: 'mlops/inference', name: 'vllm', desc: 'High-throughput LLM serving' },
-  { cat: 'mlops/models', name: 'audiocraft', desc: 'MusicGen text-to-music' },
-  { cat: 'mlops/models', name: 'segment-anything-model', desc: 'SAM zero-shot segmentation' },
-  { cat: 'mlops/research', name: 'dspy', desc: 'Declarative LM programs' },
-  { cat: 'mlops/training', name: 'axolotl', desc: 'YAML LLM fine-tuning (LoRA, DPO)' },
-  { cat: 'mlops/training', name: 'trl-fine-tuning', desc: 'SFT/DPO/PPO/GRPO RLHF' },
-  { cat: 'mlops/training', name: 'unsloth', desc: '2-5x faster LoRA fine-tuning' },
-
-  // morning-briefing
-  { cat: 'morning-briefing', name: 'morning-briefing', desc: 'World news + briefing' },
-
-  // note-taking
-  { cat: 'note-taking', name: 'obsidian', desc: 'Read/search/create Obsidian notes' },
-
-  // productivity
-  { cat: 'productivity', name: 'airtable', desc: 'Airtable REST API CRUD' },
-  { cat: 'productivity', name: 'automation-workflows', desc: 'Automation workflow design' },
-  { cat: 'productivity', name: 'casaos-backend-api-extension', desc: 'Extend CasaOS FastAPI' },
-  { cat: 'productivity', name: 'gcalcli-calendar', desc: 'Google Calendar via gcalcli' },
-  { cat: 'productivity', name: 'google-workspace', desc: 'Gmail/Calendar/Drive/Docs/Sheets' },
-  { cat: 'productivity', name: 'linear', desc: 'Linear: issues/projects via GraphQL' },
-  { cat: 'productivity', name: 'maps', desc: 'Geocode/POIs/routes via OSM' },
-  { cat: 'productivity', name: 'nano-pdf', desc: 'Edit PDF text/typos/titles' },
-  { cat: 'productivity', name: 'notion', desc: 'Notion API + ntn CLI' },
-  { cat: 'productivity', name: 'ocr-and-documents', desc: 'Extract text from PDFs/scans' },
-  { cat: 'productivity', name: 'powerpoint', desc: 'Create/read/edit .pptx decks' },
-  { cat: 'productivity', name: 'teac-assignment-writing', desc: 'TEAC university assignments' },
-  { cat: 'productivity', name: 'teams-meeting-pipeline', desc: 'Teams meeting pipeline' },
-  { cat: 'productivity', name: 'university-essay', desc: 'Research-backed essays' },
-
-  // red-teaming
-  { cat: 'red-teaming', name: 'godmode', desc: 'Jailbreak LLMs: Parseltongue/GODMODE' },
-
-  // research
-  { cat: 'research', name: 'arxiv', desc: 'Search arXiv papers' },
-  { cat: 'research', name: 'blogwatcher', desc: 'Monitor blogs via blogwatcher-cli' },
-  { cat: 'research', name: 'html-in-canvas-monitor', desc: 'Layout Subtree API monitor' },
-  { cat: 'research', name: 'llm-wiki', desc: "Karpathy's LLM Wiki" },
-  { cat: 'research', name: 'polymarket', desc: 'Polymarket markets/prices' },
-  { cat: 'research', name: 'research-paper-writing', desc: 'Academic paper writing' },
-
-  // smart-home
-  { cat: 'smart-home', name: 'openhue', desc: 'Control Philips Hue lights' },
-
-  // social-media
-  { cat: 'social-media', name: 'xurl', desc: 'X/Twitter via xurl CLI' },
-
-  // software-development
-  { cat: 'software-development', name: 'architecture-decision-records', desc: 'Capture ADRs' },
-  { cat: 'software-development', name: 'autonomous-development', desc: 'End-to-end from spec' },
-  { cat: 'software-development', name: 'benchmark', desc: 'Performance baselines' },
-  { cat: 'software-development', name: 'coding-standards', desc: 'Naming conventions' },
-  { cat: 'software-development', name: 'debugging-hermes-tui-commands', desc: 'Debug Hermes TUI' },
-  { cat: 'software-development', name: 'e2e-testing', desc: 'Playwright E2E testing' },
-  { cat: 'software-development', name: 'hermes-agent-skill-authoring', desc: 'Author SKILL.md files' },
-  { cat: 'software-development', name: 'node-inspect-debugger', desc: 'Debug Node.js via CDP' },
-  { cat: 'software-development', name: 'plan', desc: 'Write markdown plans' },
-  { cat: 'software-development', name: 'python-debugpy', desc: 'Debug Python via debugpy' },
-  { cat: 'software-development', name: 'requesting-code-review', desc: 'Pre-commit review' },
-  { cat: 'software-development', name: 'search-first', desc: 'Research-before-coding' },
-  { cat: 'software-development', name: 'security-review', desc: 'Security checklist' },
-  { cat: 'software-development', name: 'skill-selector', desc: 'Every-turn skill scorer' },
-  { cat: 'software-development', name: 'skill-selector-prep', desc: 'Weekly cron skill sync' },
-  { cat: 'software-development', name: 'spike', desc: 'Throwaway experiments' },
-  { cat: 'software-development', name: 'structured-code-review', desc: 'Structured code review' },
-  { cat: 'software-development', name: 'subagent-driven-development', desc: 'Subagent execution plans' },
-  { cat: 'software-development', name: 'svelte-development', desc: 'Svelte 5 runes mode' },
-  { cat: 'software-development', name: 'systematic-debugging', desc: '4-phase root cause' },
-  { cat: 'software-development', name: 'test-driven-development', desc: 'TDD: RED-GREEN-REFACTOR' },
-  { cat: 'software-development', name: 'vite-patterns', desc: 'Vite build patterns' },
-  { cat: 'software-development', name: 'writing-plans', desc: 'Implementation plans' },
-
-  // yuanbao
-  { cat: 'yuanbao', name: 'yuanbao', desc: 'Yuanbao groups: @mention users' }
-];
-
-// Add skill nodes
-skillNodes.forEach(s => {
-  const catColor = COLOR_HEX[CATEGORY_COLORS[s.cat]] || 0x888888;
-  nodes.push({
-    id: `skill:${s.cat}/${s.name}`,
-    label: s.name,
-    type: 'skill',
-    category: s.cat,
-    color: catColor,
-    size: s.cat === 'agents' ? 10 : 6,
-    desc: s.desc
-  });
-});
-
-// Add category cluster nodes
-skillCategories.forEach(cat => {
-  nodes.push({
-    id: `cat:${cat}`,
-    label: categoryLabelsShort[cat] || cat,
-    type: 'category',
-    category: cat,
-    color: COLOR_HEX[CATEGORY_COLORS[cat]] || 0x888888,
-    size: 18,
-    desc: categoryLabels[cat] || cat
-  });
-  // Link all skills in category to cluster node
-  skillNodes.filter(s => s.cat === cat).forEach(s => {
-    links.push({
-      source: `skill:${s.cat}/${s.name}`,
-      target: `cat:${cat}`,
-      color: 0x333333,
-      width: 0.5
-    });
-  });
-});
-
-// Memory entries
-const memoryEntries = [
-  { id: 'mem:host-ssh', label: 'Host SSH', desc: '172.19.0.1 (not localhost). sshd must be running on host.' },
-  { id: 'mem:repo-transmute', label: 'repo-transmute', desc: 'Vision-driven code migration engine. Extracted 629 components.' },
-  { id: 'mem:seans-reporepo', label: "sean's repos", desc: 'ChonSong/seans-reporepo. Cron: Mon 9am.' },
-  { id: 'mem:unified-arch', label: 'Unified arch', desc: 'HWC = Go+Svelte5 dev. agent-os = legacy Node/Express+React.' },
-  { id: 'mem:hwc-phase', label: 'HWC v1.3', desc: 'Phase Engine complete (May 24, 43532a0). Cron: b327d27d5798 every 30m.' },
-  { id: 'mem:bootstrap', label: 'Bootstrap', desc: 'One curl cmd. Config.yaml at repo root. memory/ and memories/ separate.' },
-  { id: 'mem:essay', label: 'Essay workflow', desc: '.md → humanize → .docx (Times NR 12pt, double-space, 1.25in margins).' },
-  { id: 'mem:theme', label: 'HWC theme', desc: 'Solid #191919 (ΔE<8 vs reference). Screenshot via SSH chrome-headless.' },
-  { id: 'mem:byterover', label: 'ByteRover', desc: 'NOT xpra. XPRA integration spec exists if needed.' },
-  { id: 'mem:sean-prefs', label: 'Sean prefs', desc: 'Concise output. "proceed"/"you decide" = delegated go. Multi-agent. Robust testing > quick delivery.' }
-];
-memoryEntries.forEach(m => {
-  nodes.push({
-    id: m.id,
-    label: m.label,
-    type: 'memory',
-    category: 'memory',
-    color: COLOR_HEX.memory,
-    size: 7,
-    desc: m.desc
-  });
-});
-
-// User profile node
-nodes.push({
-  id: 'user:sean',
-  label: 'Sean 👤',
-  type: 'user',
-  category: 'user',
-  color: COLOR_HEX.agent,
-  size: 14,
-  desc: 'Technical, self-hosted ops. Prefers concise output. "proceed"/"you decide" = full delegated go. Design: question before building. Expects multi-agent delegation.'
-});
-
-// Link memory entries to user
-memoryEntries.forEach(m => {
-  links.push({ source: m.id, target: 'user:sean', color: 0x444444, width: 0.8 });
-});
-
-// Config nodes
-const configNodes = [
-  { id: 'config:hermes-sync', label: 'hermes-sync', type: 'project', desc: '~/hermes-sync/projects/ — sync backup to ChonSong/hermes-sync' },
-  { id: 'config:config-yaml', label: 'config.yaml', type: 'config', desc: '~/.hermes/config.yaml — main Hermes config' },
-  { id: 'config:kanban', label: 'kanban.db', type: 'config', desc: '~/.hermes/kanban.db — Kanban dispatcher' },
-  { id: 'config:gateway', label: 'gateway', type: 'config', desc: 'Hermes gateway process' },
-  { id: 'config:cron', label: 'cron', type: 'config', desc: '~/.hermes/cron/ — scheduled jobs' },
-  { id: 'config:skills-dir', label: 'skills/', type: 'config', desc: '~/.hermes/skills/ — 89 skills across 23 categories' },
-  { id: 'config:sessions', label: 'sessions/', type: 'config', desc: 'Session data directory' },
-  { id: 'config:plans', label: 'plans/', type: 'config', desc: '~/.hermes/plans/ — implementation plans' }
-];
-configNodes.forEach(c => {
-  nodes.push({
-    id: c.id,
-    label: c.label,
-    type: c.type,
-    category: 'config',
-    color: COLOR_HEX.config,
-    size: 8,
-    desc: c.desc
-  });
-});
-
-// Projects
-const projectNodes = [
-  { id: 'proj:hermes-agent', label: 'hermes-agent', desc: 'ChonSong/hermes-agent (fork) — main agent repo' },
-  { id: 'proj:hermes-web-computer', label: 'HWC', desc: 'Go + Svelte5. v1.3 Phase Engine complete.' },
-  { id: 'proj:agent-os', label: 'agent-os', desc: 'Legacy: Node/Express+React+Postgres. React 19 upgraded.' },
-  { id: 'proj:repo-transmute', label: 'repo-transmute', desc: 'ChonSong/repo-transmute — vision-driven migration' },
-  { id: 'proj:seans-reporepo', label: 'seans-reporepo', desc: 'ChonSong/seans-reporepo — cron Mon 9am' },
-  { id: 'proj:hermes-sync', label: 'hermes-sync', desc: 'ChonSong/hermes-sync — backup repo' }
-];
-projectNodes.forEach(p => {
-  nodes.push({
-    id: p.id,
-    label: p.label,
-    type: 'project',
-    category: 'project',
-    color: COLOR_HEX.project,
-    size: 10,
-    desc: p.desc
-  });
-});
-
-// Link projects to related items
-links.push({ source: 'proj:hermes-agent', target: 'skill:autonomous-ai-agents/hermes-agent', color: 0x5b8fd9, width: 1 });
-links.push({ source: 'proj:hermes-web-computer', target: 'skill:software-development/svelte-development', color: 0x5b8fd9, width: 1 });
-links.push({ source: 'proj:agent-os', target: 'skill:devops/agent-os-architecture', color: 0x5b8fd9, width: 1 });
-links.push({ source: 'proj:repo-transmute', target: 'skill:repo-transmute/repo-transmute', color: 0x5b8fd9, width: 1 });
-
-// Cross-links between related skills
-const crossLinks = [
-  ['skill:mlops/inference/llama-cpp', 'skill:mlops/inference/vllm'],
-  ['skill:mlops/training/axolotl', 'skill:mlops/training/unsloth'],
-  ['skill:software-development/subagent-driven-development', 'skill:software-development/plan'],
-  ['skill:github/github-pr-workflow', 'skill:github/github-code-review'],
-  ['skill:devops/docker-patterns', 'skill:hermes/hermes-docker-workflow'],
-  ['skill:autonomous-ai-agents/hermes-agent', 'skill:software-development/hermes-agent-skill-authoring'],
-  ['skill:research/arxiv', 'skill:research/research-paper-writing'],
-  ['skill:productivity/notion', 'skill:note-taking/obsidian'],
-  ['skill:media/spotify', 'skill:media/heartmula'],
-  ['skill:devops/kanban-orchestrator', 'skill:devops/kanban-worker'],
-  ['skill:mlops/research/dspy', 'skill:mlops/inference/outlines'],
-  ['skill:software-development/test-driven-development', 'skill:software-development/e2e-testing'],
-  ['skill:autonomous-ai-agents/claude-code', 'skill:autonomous-ai-agents/opencode'],
-  ['skill:github/github-auth', 'skill:github/github-repo-management'],
-  ['skill:devops/infrastructure-as-code', 'skill:devops/deployment-patterns'],
-  ['skill:productivity/google-workspace', 'skill:email/himalaya'],
-  ['skill:mlops/inference/llama-cpp', 'skill:mlops/huggingface-hub'],
-  ['skill:software-development/python-debugpy', 'skill:software-development/systematic-debugging'],
-  ['skill:creative/excalidraw', 'skill:creative/architecture-diagram'],
-  ['skill:media/youtube-content', 'skill:research/blogwatcher']
-];
-crossLinks.forEach(([src, tgt]) => {
-  if (nodeMap.has(src) && nodeMap.has(tgt)) {
-    links.push({ source: src, target: tgt, color: 0x3a5a3a, width: 0.7 });
-  }
-});
-
-// Graph data
-const data = { nodes, links };
-
-// Legend
-const legend = document.getElementById('legend');
-const types = [
-  { type: 'agent', color: '#c07bd4', label: 'Core Agent' },
-  { type: 'category', color: '#888', label: 'Skill Category (cluster)' },
-  { type: 'skill', color: '#5b8fd9', label: 'Skill (89 total)' },
-  { type: 'memory', color: '#d97b5b', label: 'Memory Entry' },
-  { type: 'project', color: '#d4c45b', label: 'Project' },
-  { type: 'config', color: '#7ec87a', label: 'Config/Dir' }
-];
-types.forEach(t => {
-  const div = document.createElement('div');
-  div.className = 'legend-item';
-  div.innerHTML = `<span class="dot" style="background:${t.color}"></span>${t.label}`;
-  legend.appendChild(div);
-});
-
-// Init graph FIRST (before toggle setup which calls updateVisibility)
-const Graph = new ForceGraph(document.getElementById('graph'))
-  .graphData(data);
-
-// Toggles
-const toggles = document.getElementById('toggles');
-const toggleTypes = ['skill', 'category', 'memory', 'project', 'config'];
-let hiddenTypes = new Set();
-
-toggleTypes.forEach(type => {
-  const btn = document.createElement('button');
-  btn.className = 'toggle-btn active';
-  btn.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-  btn.dataset.type = type;
-  btn.onclick = () => {
-    if (hiddenTypes.has(type)) {
-      hiddenTypes.delete(type);
-      btn.classList.add('active');
-    } else {
-      hiddenTypes.add(type);
-      btn.classList.remove('active');
+    function makeNode(id, label, type, category, desc) {
+      const n = { id, label, type, category, desc };
+      nodeMap.set(id, n);
+      return n;
     }
-    updateVisibility();
-  };
-  toggles.appendChild(btn);
-});
 
-function updateVisibility() {
-  const graphData = {
-    nodes: data.nodes.filter(n => !hiddenTypes.has(n.type)),
-    links: data.links.filter(l => {
-      const src = typeof l.source === 'object' ? l.source.id : l.source;
-      const tgt = typeof l.target === 'object' ? l.target.id : l.target;
-      return nodeMap.has(src) && nodeMap.has(tgt) &&
-        !hiddenTypes.has(nodeMap.get(src)?.type) &&
-        !hiddenTypes.has(nodeMap.get(tgt)?.type);
-    })
-  };
-  Graph.graphData(graphData);
-}
+    // Skill nodes (89 skills)
+    const skillCats = [
+      ['autonomous-ai-agents',['claude-code','codex','hermes-agent','opencode','kanban-codex-lane','multi-provider-llm-backoff','roadmap-engine','self-improvement-engine']],
+      ['agents',['main','zoul','codi','coach','researcher','planner','coder','reviewer','knowledge-manager','automator','browser-agent','journal','nginxmanagerbot','mediamaker','heartbeat','curriculum-design','ubd-docx-generator','zoul-delegation','zoul-soul','react-agent']],
+      ['creative',['ascii-art','ascii-video','baoyu-article-illustrator','baoyu-comic','baoyu-infographic','claude-design','comfyui','design-md','excalidraw','humanizer','ideation','manim-video','p5js','pixel-art','popular-web-designs','pretext','sketch','songwriting-and-ai-music','touchdesigner-mcp','architecture-diagram']],
+      ['data-science',['jupyter-live-kernel']],
+      ['devops',['agent-os-architecture','canary-watch','casaos-webhook-emitter-impl','context-budget','cost-aware-llm-pipeline','deployment-patterns','docker-patterns','git-workflow','go','hermes-docker-sync-setup','hermes-docker-workflow','infrastructure-as-code','kanban-orchestrator','kanban-worker','multi-provider-api-calls','nanobot-to-hermes-migration','poker-training-platform','repo-catalog','repo-init','webhook-subscriptions']],
+      ['dogfood',['dogfood']],
+      ['email',['himalaya']],
+      ['gaming',['minecraft-modpack-server','pokemon-player']],
+      ['github',['codebase-inspection','github-auth','github-code-review','github-issues','github-pr-workflow','github-repo-management','repo-discovery']],
+      ['mcp',['native-mcp']],
+      ['media',['gif-search','heartmula','songsee','spotify','youtube-content']],
+      ['mlops',['huggingface-hub','evaluating-llms-harness','weights-and-biases','llama-cpp','obliteratus','outlines','serving-llms-vllm','audiocraft-audio-generation','segment-anything-model','dspy','axolotl','fine-tuning-with-trl','unsloth']],
+      ['morning-briefing',['morning-briefing']],
+      ['note-taking',['obsidian']],
+      ['openclaw-imports',['affine-logger','api-gateway','automation-workflows','gcalcli-calendar','gmail','hybrid-orchestrator','notion-api','sonoscli','self-improvement']],
+      ['planning',['blueprint','nanobot-integration-plan','product-lens']],
+      ['productivity',['airtable','automation-workflows','google-workspace','linear','maps','nano-pdf','notion','ocr-and-documents','powerpoint','teams-meeting-pipeline','teac-assignment-writing','university-essay']],
+      ['red-teaming',['godmode']],
+      ['repo-transmute',['repo-transmute']],
+      ['research',['arxiv','blogwatcher','html-in-canvas-monitor','llm-wiki','polymarket']],
+      ['smart-home',['openhue']],
+      ['social-media',['xurl']],
+      ['yuanbao',['yuanbao']],
+      ['software-development',['architecture-decision-records','autonomous-development','benchmark','coding-standards','debugging-hermes-tui-commands','e2e-testing','hermes-agent-skill-authoring','node-inspect-debugger','plan','python-debugpy','requesting-code-review','security-review','skill-selector','skill-selector-prep','spike','structured-code-review','subagent-driven-development','svelte-development','systematic-debugging','test-driven-development','vite-patterns','writing-plans']],
+    ];
 
-// Config
-Graph.backgroundColor('#0d0d0d')
-  .nodeLabel(n => `<strong>${n.label}</strong><br><span style="color:#aaa;font-size:11px">${n.desc || ''}</span>`)
-  .nodeRelSize(6)
-  .linkColor(l => l.color ? '#' + l.color.toString(16).padStart(6, '0') : '#555')
-  .linkWidth(l => l.width || 1)
-  .linkDirectionalParticles(0)
-  .d3VelocityDecay(0.3)
-  .cooldownTime(3000)
-  .onNodeClick(node => {
-    const info = document.getElementById('detail');
-    const catLabel = categoryLabels[node.category] || node.category || '';
-    info.innerHTML = `<strong style="font-size:15px">${node.label}</strong><br>
-      <span style="color:${node.color ? '#' + node.color.toString(16).padStart(6,'0') : '#fff'}">${node.type}</span>
-      ${catLabel ? ` • ${catLabel}` : ''}<br>
-      <span style="color:#888;font-size:12px">${node.desc || 'No description'}</span>`;
-  });
+    for (const [cat, names] of skillCats) {
+      for (const name of names) {
+        nodes.push(makeNode(name, name, 'skill', cat, categoryLabels[cat] || cat));
+      }
+    }
 
-// Auto-center on load
-Graph.onEngineStop(() => Graph.zoomToFit(400, 50));
-</script>
+    // Core agents
+    const agents = ['main','zoul','codi','coach','researcher','planner','coder','reviewer','knowledge-manager','automator','browser-agent','journal','nginxmanagerbot','mediamaker','heartbeat','curriculum-design','ubd-docx-generator','zoul-delegation','zoul-soul','react-agent'];
+    for (const a of agents) {
+      nodes.push(makeNode(a, a, 'agent', 'agents', 'Core agent'));
+    }
+
+    // Memory nodes
+    const memNodes = [
+      ['hermes-agent','Hermes Agent setup','skill: hermes-agent, config at ~/.hermes/, bootstrap via curl'],
+      ['repo-transmute','Vision-driven migration','features-list repo, AST extraction, Playwright screenshots'],
+      ['HWC','Hermes Web Computer','Go+Svelte5, phase engine, state dir, cron every 30m'],
+      ['Essay workflow','.md→humanize→.docx→Drive','Times NR 12pt, double-space, cite Kublin/Ebrey not WSU materials'],
+      ['Bootstrap','One-curl setup','GITHUB_TOKEN env var, PAT required, test before push'],
+      ['Multi-agent','Zoul orchestration','delegate_task, subagent patterns, max 3 concurrent'],
+      ['HWC theme','Solid #191919','ΔE<8 vs reference, screenshot via chrome-headless→GAPI'],
+    ];
+    for (const [id, label, desc] of memNodes) {
+      nodes.push(makeNode(id, label, 'memory', 'memory', desc));
+    }
+
+    // Projects
+    const projNodes = [
+      ['hermes-sync','ChonSong/hermes-sync','Cron: Mon 9am'],
+      ['hermes-agent','ChonSong/hermes-agent','Fork of upstream'],
+      ['seans-reporepo','ChonSong/seans-reporepo','Cron: Mon 9am'],
+      ['repo-transmute-v2','ChonSong/repo-transmute','Vision-driven migration v2, /opt/data/'],
+    ];
+    for (const [id, label, desc] of projNodes) {
+      nodes.push(makeNode(id, label, 'project', 'project', desc));
+    }
+
+    // Config
+    const configNodes = [
+      ['~/.hermes/config.yaml','Config file','root config.yaml, NOT in config/ dir'],
+      ['~/.hermes/memory/','Daily memory','YYYY-MM-DD.md files'],
+      ['~/.hermes/memories/','Long-term memory','MEMORY.md (main), USER.md (profile)'],
+      ['~/.hermes/skills/','Skills dir','SKILL.md files, ~89 skills'],
+      ['~/.hermes/','Home dir','Hermes state directory'],
+    ];
+    for (const [id, label, desc] of configNodes) {
+      nodes.push(makeNode(id, label, 'config', 'config', desc));
+    }
+
+    // Links: category → skill
+    const catNodes = {};
+    for (const n of nodes) {
+      if (n.type === 'skill' && n.category) {
+        if (!catNodes[n.category]) catNodes[n.category] = makeNode(n.category, categoryLabels[n.category] || n.category, 'category', n.category, 'Category');
+        links.push({ source: n.category, target: n.id, color: 0x555555, width: 1 });
+      }
+    }
+    // Agent links
+    for (const a of agents) {
+      links.push({ source: 'zoul', target: a, color: 0xc07bd4, width: 2 });
+    }
+    // Memory links
+    links.push({ source: 'HWC', target: 'hermes-agent', color: 0xd97b5b, width: 1 });
+    links.push({ source: 'repo-transmute-v2', target: 'repo-transmute', color: 0x5bc4c4, width: 1 });
+    links.push({ source: 'Essay workflow', target: 'university-essay', color: 0xd97b5b, width: 1 });
+    links.push({ source: 'Bootstrap', target: 'hermes-agent', color: 0x7ec87a, width: 1 });
+
+    // Project links
+    links.push({ source: 'seans-reporepo', target: 'repo-transmute-v2', color: 0xd4c45b, width: 1 });
+
+    // Config links
+    links.push({ source: 'hermes-agent', target: '~/.hermes/config.yaml', color: 0x888888, width: 1 });
+    links.push({ source: 'hermes-agent', target: '~/.hermes/memory/', color: 0x888888, width: 1 });
+    links.push({ source: 'hermes-agent', target: '~/.hermes/skills/', color: 0x888888, width: 1 });
+    links.push({ source: 'HWC', target: '~/.hermes/', color: 0x888888, width: 1 });
+
+    const data = { nodes, links };
+
+    // ── Legend ─────────────────────────────────────────────────────────────────
+    const legend = document.getElementById('legend');
+    const types = [
+      { type: 'skill', color: '#5b8fd9', label: 'Skill' },
+      { type: 'agent', color: '#c07bd4', label: 'Agent' },
+      { type: 'category', color: '#888888', label: 'Category' },
+      { type: 'memory', color: '#d97b5b', label: 'Memory' },
+      { type: 'project', color: '#d4c45b', label: 'Project' },
+      { type: 'config', color: '#7ec87a', label: 'Config/Dir' },
+    ];
+    for (const t of types) {
+      const div = document.createElement('div');
+      div.className = 'legend-item';
+      div.innerHTML = `<span class="dot" style="background:${t.color}"></span>${t.label}`;
+      legend.appendChild(div);
+    }
+
+    // ── Graph ──────────────────────────────────────────────────────────────────
+    const graphEl = document.getElementById('graph');
+
+    const Graph = ForceGraph()(graphEl)
+      .graphData(data)
+      .backgroundColor('#0d0d0d')
+      .nodeLabel(n => `<strong>${n.label}</strong><br><span style="color:#aaa;font-size:11px">${n.desc || ''}</span>`)
+      .nodeRelSize(6)
+      .nodeColor(n => {
+        if (n.type === 'category') return '#888888';
+        if (n.type === 'skill') return '#' + (CATEGORY_COLORS[n.category] || 0x5b8fd9).toString(16).padStart(6,'0');
+        if (n.type === 'agent') return '#c07bd4';
+        if (n.type === 'memory') return '#d97b5b';
+        if (n.type === 'project') return '#d4c45b';
+        if (n.type === 'config') return '#7ec87a';
+        return '#888';
+      })
+      .linkColor(() => '#555')
+      .linkWidth(1)
+      .linkDirectionalParticles(0)
+      .d3VelocityDecay(0.3)
+      .cooldownTime(3000)
+      .onNodeClick(node => {
+        const catColor = n => '#' + (CATEGORY_COLORS[n.category] || 0x888888).toString(16).padStart(6,'0');
+        document.getElementById('detail').innerHTML =
+          `<strong style="font-size:15px">${node.label}</strong><br>
+          <span style="color:${catColor(node)}">${node.type}</span>
+          ${categoryLabels[node.category] ? ' • ' + categoryLabels[node.category] : ''}<br>
+          <span style="color:#888;font-size:12px">${node.desc || 'No description'}</span>`;
+      });
+
+    Graph.onEngineStop(() => Graph.zoomToFit(400, 50));
+
+    // ── Toggles ────────────────────────────────────────────────────────────────
+    const toggles = document.getElementById('toggles');
+    const toggleTypes = ['skill', 'category', 'memory', 'project', 'config'];
+    const hiddenTypes = new Set();
+
+    for (const type of toggleTypes) {
+      const btn = document.createElement('button');
+      btn.className = 'toggle-btn active';
+      btn.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+      btn.dataset.type = type;
+      btn.onclick = () => {
+        if (hiddenTypes.has(type)) {
+          hiddenTypes.delete(type);
+          btn.classList.add('active');
+        } else {
+          hiddenTypes.add(type);
+          btn.classList.remove('active');
+        }
+        updateVisibility();
+      };
+      toggles.appendChild(btn);
+    }
+
+    function updateVisibility() {
+      const visible = new Set(nodes.filter(n => !hiddenTypes.has(n.type)).map(n => n.id));
+      Graph.graphData({
+        nodes: nodes.filter(n => !hiddenTypes.has(n.type)),
+        links: links.filter(l => {
+          const src = typeof l.source === 'object' ? l.source.id : l.source;
+          const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+          return visible.has(src) && visible.has(tgt);
+        })
+      });
+    }
+  </script>
 </body>
 </html>
