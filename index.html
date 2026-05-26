@@ -208,7 +208,7 @@
     // ── Graph ──────────────────────────────────────────────────────────────────
     const graphEl = document.getElementById('graph');
 
-    const Graph = ForceGraph()(graphEl)
+    const Graph = ForceGraph(graphEl)
       .graphData(data)
       .backgroundColor('#0d0d0d')
       .nodeLabel(n => `<strong>${n.label}</strong><br><span style="color:#aaa;font-size:11px">${n.desc || ''}</span>`)
