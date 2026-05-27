@@ -1,277 +1,752 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Hermes Knowledge Graph</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0d0d0d; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
-    #graph { width: 100vw; height: 100vh; }
-    #info {
-      position: fixed; top: 20px; left: 20px; background: rgba(20,20,20,0.95);
-      border: 1px solid #333; border-radius: 8px; padding: 16px; max-width: 320px;
-      font-size: 13px; line-height: 1.5; z-index: 100; box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-    }
-    #info h1 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #fff; }
-    #info .legend { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-    #info .legend-item { display: flex; align-items: center; gap: 8px; }
-    #info .dot { width: 10px; height: 10px; border-radius: 50%; }
-    #info .desc { color: #888; font-size: 11px; margin-top: 8px; }
-    .link-type-toggle {
-      position: fixed; bottom: 20px; left: 20px; background: rgba(20,20,20,0.95);
-      border: 1px solid #333; border-radius: 8px; padding: 12px; z-index: 100;
-      display: flex; gap: 8px; flex-wrap: wrap; max-width: 90vw;
-    }
-    .toggle-btn {
-      background: #222; border: 1px solid #444; color: #888; padding: 6px 12px;
-      border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s;
-    }
-    .toggle-btn:hover { border-color: #666; color: #aaa; }
-    .toggle-btn.active { background: #306090; border-color: #5090c0; color: #fff; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skills Knowledge Graph</title>
+<script src="https://cdn.jsdelivr.net/npm/force-graph@1.43.5/dist/force-graph.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d14;
+    color: #e0e0e8;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  header {
+    padding: 10px 20px;
+    background: #12121c;
+    border-bottom: 1px solid #222236;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #8888aa;
+    white-space: nowrap;
+  }
+
+  #graph-stats {
+    font-size: 11px;
+    color: #666680;
+  }
+  #graph-stats span { color: #9999bb; font-weight: 500; }
+
+  #filter-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-label {
+    font-size: 11px;
+    color: #555570;
+    margin-right: 4px;
+  }
+
+  .filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid #2a2a3a;
+    background: #1a1a28;
+    color: #7777aa;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .filter-btn .count {
+    background: #2a2a3a;
+    padding: 0 5px;
+    border-radius: 8px;
+    font-size: 10px;
+    color: #555580;
+  }
+  .filter-btn.on {
+    background: #1e1e30;
+    color: #aaaacc;
+    border-color: #3a3a55;
+  }
+  .filter-btn.on .count { background: #333355; color: #8888bb; }
+  .filter-btn:hover { background: #222236; }
+
+  #main-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  #graph-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #graph-info {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 11px;
+    color: #444460;
+    pointer-events: none;
+  }
+
+  #legend {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(18,18,28,0.92);
+    border: 1px solid #222236;
+    border-radius: 8px;
+    padding: 10px 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    min-width: 130px;
+  }
+  #legend h4 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #555570;
+    margin-bottom: 8px;
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 5px;
+    font-size: 11px;
+    color: #8888aa;
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  #tooltip {
+    position: absolute;
+    background: #1a1a28;
+    border: 1px solid #333355;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #9999bb;
+    pointer-events: none;
+    display: none;
+    z-index: 100;
+  }
+
+  #empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #333355;
+    font-size: 13px;
+    text-align: center;
+    line-height: 1.8;
+  }
+  #empty-state strong { color: #444466; display: block; font-size: 14px; margin-bottom: 4px; }
+
+  /* ── Detail panel ─────────────────────────────────────────── */
+  #detail-panel {
+    width: 320px;
+    background: #12121c;
+    border-left: 1px solid #1e1e2e;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+  }
+  #detail-panel.visible { transform: translateX(0); }
+
+  #detail-header {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid #1e1e2e;
+    flex-shrink: 0;
+  }
+  #detail-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #d0d0e0;
+    margin-bottom: 4px;
+  }
+  #detail-ns {
+    font-size: 11px;
+    color: #555580;
+  }
+
+  #detail-badges {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .badge-verified   { background: #162a1e; color: #4ecb71; }
+  .badge-unverified { background: #222236; color: #555570; }
+  .badge-complex-high   { background: #2a1520; color: #e84a5f; }
+  .badge-complex-medium { background: #221a30; color: #9b7acc; }
+  .badge-complex-low    { background: #162030; color: #3498db; }
+
+  #detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+  }
+
+  #detail-desc {
+    font-size: 12px;
+    color: #8888aa;
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+
+  /* Meta grid */
+  #detail-meta {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .meta-item {
+    background: #161622;
+    border-radius: 6px;
+    padding: 8px 6px;
+    text-align: center;
+  }
+  .meta-item .val {
+    font-size: 16px;
+    font-weight: 600;
+    color: #c0c0d8;
+  }
+  .meta-item .lbl {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #444466;
+    margin-top: 2px;
+  }
+
+  /* Quality score bar */
+  .quality-bar-wrap {
+    margin-bottom: 14px;
+  }
+  .quality-bar-wrap .lbl {
+    font-size: 10px;
+    color: #444466;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .quality-bar-wrap .bar {
+    height: 4px;
+    background: #1e1e2e;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .quality-bar-wrap .fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #3498db, #9b59b6, #e84a5f);
+    transition: width 0.4s;
+  }
+
+  /* Section headers */
+  .sec-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #444466;
+    margin-bottom: 8px;
+  }
+  .copy-btn {
+    background: #1e1e2e;
+    border: 1px solid #2a2a3a;
+    color: #666680;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { background: #2a2a3a; color: #9999bb; border-color: #3a3a55; }
+  .copy-btn.copied { color: #4ecb71; border-color: #2a4a3a; }
+
+  .detail-section {
+    margin-bottom: 14px;
+  }
+
+  /* Qualified name */
+  #detail-qualified {
+    background: #161622;
+    border: 1px solid #222236;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    color: #8888cc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  #detail-qualified .qname-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #detail-qualified .copy-icon {
+    flex-shrink: 0;
+    cursor: pointer;
+    color: #555580;
+    font-size: 11px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  #detail-qualified .copy-icon:hover { background: #2a2a3a; color: #9999bb; border-color: #3a3a55; }
+  #detail-qualified .copy-icon.copied { color: #4ecb71; }
+
+  /* Tools */
+  #detail-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .tool-chip {
+    background: #1a2530;
+    color: #5a9ab8;
+    border: 1px solid #2a3a4a;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+  }
+
+  /* Tags */
+  #detail-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .tag-chip {
+    background: #2a1a30;
+    color: #b87acc;
+    border: 1px solid #3a2a4a;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+  }
+
+  /* Role/author/version */
+  .meta-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .meta-card {
+    background: #161622;
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .meta-card .card-lbl {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #444466;
+    margin-bottom: 3px;
+  }
+  .meta-card .card-val {
+    font-size: 11px;
+    color: #8888aa;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Connections */
+  #conn-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .conn-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .conn-item:hover { background: #1a1a28; }
+  .conn-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .conn-name { font-size: 11px; color: #8888aa; flex: 1; }
+  .conn-type {
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+  .conn-type.member-of { background: #1a1a30; color: #6666aa; }
+  .conn-type.workflow-peer { background: #1a2a1a; color: #5a8a5a; }
+  .conn-type.quality-hub { background: #2a1a2a; color: #8a5aaa; }
+  .conn-type.tool-use { background: #1a2a2a; color: #4a8a8a; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 2px; }
+</style>
 </head>
 <body>
-  <div id="graph"></div>
-  <div id="info">
-    <h1>🔮 Hermes Knowledge Graph</h1>
-    <div id="detail">Loading...</div>
-    <div class="legend" id="legend"></div>
-    <div class="desc">Scroll to zoom • drag to pan • drag nodes to rearrange</div>
+
+<header>
+  <h1>Skills Graph</h1>
+  <div id="graph-stats">—</div>
+  <div id="filter-bar">
+    <span class="filter-label">Edges:</span>
   </div>
-  <div class="link-type-toggle" id="toggles"></div>
+</header>
 
-  <script type="module">
-    import ForceGraph from 'https://cdn.jsdelivr.net/npm/force-graph@1.43.5/dist/force-graph.mjs';
+<div id="main-layout">
+  <div id="graph-container">
+    <div id="graph-info"></div>
+    <div id="legend">
+      <h4>Namespaces</h4>
+      <div id="legend-item"></div>
+    </div>
+    <div id="tooltip"></div>
+    <div id="empty-state">
+      <strong>Skills Knowledge Graph</strong>
+      Click a node to inspect details<br>
+      Drag to pan · Scroll to zoom
+    </div>
+  </div>
+  <div id="detail-panel">
+    <div id="detail-header">
+      <div id="detail-name">—</div>
+      <div id="detail-ns">—</div>
+      <div id="detail-badges"></div>
+    </div>
+    <div id="detail-body">
+      <div id="detail-qualified">
+        <span class="qname-text" id="detail-qname">—</span>
+        <span class="copy-icon" id="copy-qname" title="Copy qualified name">⎘</span>
+      </div>
+      <div id="detail-desc"></div>
 
-    // ── Data ──────────────────────────────────────────────────────────────────
-    const COLORS = {
-      skill: '#5b8fd9', memory: '#d97b5b', config: '#7ec87a',
-      agent: '#c07bd4', project: '#d4c45b', session: '#5bc4c4', other: '#888'
-    };
+      <div class="quality-bar-wrap">
+        <div class="lbl">
+          <span>Quality Score</span>
+          <span id="quality-val">—</span>
+        </div>
+        <div class="bar"><div class="fill" id="quality-fill"></div></div>
+      </div>
 
-    const CATEGORY_COLORS = {
-      'autonomous-ai-agents': 0x7ec87a, 'creative': 0xd4c45b, 'data-science': 0x5bc4c4,
-      'devops': 0x5b8fd9, 'dogfood': 0xc07bd4, 'email': 0xd97b5b, 'gaming': 0x88d97b,
-      'github': 0x7ec87a, 'mcp': 0x5b8fd9, 'media': 0xd97b5b, 'mlops': 0xc07bd4,
-      'morning-briefing': 0x5bc4c4, 'note-taking': 0x88d97b, 'openclaw-imports': 0xc07bd4,
-      'planning': 0x7ec87a, 'productivity': 0x5b8fd9, 'red-teaming': 0xd97b5b,
-      'repo-transmute': 0x5bc4c4, 'research': 0x5b8fd9, 'smart-home': 0x88d97b,
-      'social-media': 0xd97b5b, 'software-development': 0x7ec87a, 'yuanbao': 0xc07bd4,
-      'agents': 0xc07bd4, 'memory': 0xd97b5b, 'config': 0x888888, 'project': 0xd4c45b
-    };
+      <div id="detail-meta"></div>
 
-    const categoryLabels = {
-      'autonomous-ai-agents': '🤖 Auto AI Agents', 'creative': '🎨 Creative',
-      'data-science': '📊 Data Science', 'devops': '⚙️ DevOps', 'dogfood': '🐕 Dogfood',
-      'email': '📧 Email', 'gaming': '🎮 Gaming', 'github': '🐙 GitHub', 'mcp': '🔌 MCP',
-      'media': '🎬 Media', 'mlops': '🧠 MLOps', 'morning-briefing': '🌅 Morning',
-      'note-taking': '📝 Notes', 'openclaw-imports': '🦋 OpenClaw', 'planning': '📋 Planning',
-      'productivity': '⚡ Productivity', 'red-teaming': '☠️ Red Team',
-      'repo-transmute': '🔄 Repo Transmute', 'research': '🔍 Research',
-      'smart-home': '🏠 Smart Home', 'social-media': '📱 Social',
-      'software-development': '💻 Dev', 'yuanbao': '💬 Yuanbao'
-    };
+      <div class="meta-row">
+        <div class="meta-card">
+          <div class="card-lbl">Author</div>
+          <div class="card-val" id="detail-author">—</div>
+        </div>
+        <div class="meta-card">
+          <div class="card-lbl">Version</div>
+          <div class="card-val" id="detail-version">—</div>
+        </div>
+      </div>
 
-    const nodes = [];
-    const links = [];
-    const nodeMap = new Map();
+      <div class="detail-section" id="detail-tools-section" style="display:none">
+        <div class="sec-header">
+          <span>Tools Used</span>
+        </div>
+        <div id="detail-tools"></div>
+      </div>
 
-    function makeNode(id, label, type, category, desc) {
-      const n = { id, label, type, category, desc };
-      nodeMap.set(id, n);
-      return n;
+      <div class="detail-section" id="detail-tags-section" style="display:none">
+        <div class="sec-header">
+          <span>Tags</span>
+        </div>
+        <div id="detail-tags"></div>
+      </div>
+
+      <div class="detail-section">
+        <div class="sec-header">
+          <span>Connections</span>
+          <span id="conn-count" style="color:#444466;font-size:9px"></span>
+        </div>
+        <div id="conn-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────
+// DATA (inline from graph_data.json)
+// ─────────────────────────────────────────────────────────────────────────
+const GRAPH_DATA = {"nodes": [{"id": "llm-wiki", "name": "llm-wiki", "qualified_name": "research/llm-wiki", "namespace": "research", "color": 686476, "complexity": "high", "role": "reviewer", "verified": true, "steps": 22, "examples": 13, "pitfalls": 9, "quality": 8.1, "lines": 506, "desc": "Karpathy's LLM Wiki: build/query interlinked markdown KB.", "size": 20.6, "author": "Hermes Agent", "version": "2.1.0", "tools": [], "tags": [], "dependencies": []}, {"id": "polymarket", "name": "polymarket", "qualified_name": "research/polymarket", "namespace": "research", "color": 686476, "complexity": "medium", "role": "worker", "verified": false, "steps": 7, "examples": 0, "pitfalls": 0, "quality": 1.2, "lines": 76, "desc": "Query Polymarket: markets, prices, orderbooks, history.", "size": 8.2, "author": "", "version": "", "tools": [], "tags": ["polymarket", "prediction-markets", "market-data", "trading"], "dependencies": []}, {"id": "blogwatcher", "name": "blogwatcher", "qualified_name": "research/blogwatcher", "namespace": "research", "color": 686476, "complexity": "low", "role": "researcher", "verified": false, "steps": 0, "examples": 5, "pitfalls": 0, "quality": 2.5, "lines": 136, "desc": "Monitor blogs and RSS/Atom feeds via blogwatcher-cli tool.", "size": 10.5, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "arxiv", "name": "arxiv", "qualified_name": "research/arxiv", "namespace": "research", "color": 686476, "complexity": "medium", "role": "researcher", "verified": false, "steps": 19, "examples": 6, "pitfalls": 0, "quality": 4.4, "lines": 261, "desc": "Search arXiv papers by keyword, author, category, or ID.", "size": 13.9, "author": "", "version": "", "tools": [], "tags": ["research", "papers", "academic"], "dependencies": []}, {"id": "research-paper-writing", "name": "research-paper-writing", "qualified_name": "research/research-paper-writing", "namespace": "research", "color": 686476, "complexity": "high", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 58, "desc": "Assist in writing research papers.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "comfyui", "name": "comfyui", "qualified_name": "creative/comfyui", "namespace": "creative", "color": 916074, "complexity": "high", "role": "creator", "verified": true, "steps": 15, "examples": 15, "pitfalls": 5, "quality": 7.8, "lines": 430, "desc": "Generate images, video, and audio with ComfyUI — install, configure, run workflows.", "size": 20, "author": "", "version": "2.0.0", "tools": [], "tags": ["image-generation", "video", "audio", "creative"], "dependencies": []}, {"id": "p5js", "name": "p5js", "qualified_name": "creative/p5js", "namespace": "creative", "color": 916074, "complexity": "medium", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 63, "desc": "p5.js sketches: gen art, shaders, interactive, 3D.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "excalidraw", "name": "excalidraw", "qualified_name": "creative/excalidraw", "namespace": "creative", "color": 916074, "complexity": "low", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 1, "lines": 68, "desc": "Create hand-drawn architecture diagrams.", "size": 7.8, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "ascii-art", "name": "ascii-art", "qualified_name": "creative/ascii-art", "namespace": "creative", "color": 916074, "complexity": "low", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 40, "desc": "ASCII art: pyfiglet, cowsay, boxes, image-to-ascii.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "ascii-video", "name": "ascii-video", "qualified_name": "creative/ascii-video", "namespace": "creative", "color": 916074, "complexity": "low", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 40, "desc": "ASCII video: convert video/audio to colored ASCII MP4/GIF.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "baoyu-comic", "name": "baoyu-comic", "qualified_name": "creative/baoyu-comic", "namespace": "creative", "color": 916074, "complexity": "medium", "role": "creator", "verified": false, "steps": 12, "examples": 0, "pitfalls": 0, "quality": 2.5, "lines": 158, "desc": "Knowledge comics (知识漫画): educational, biography, tutorial.", "size": 10.5, "author": "", "version": "", "tools": [], "tags": ["comic", "knowledge", "educational"], "dependencies": []}, {"id": "baoyu-infographic", "name": "baoyu-infographic", "qualified_name": "creative/baoyu-infographic", "namespace": "creative", "color": 916074, "complexity": "medium", "role": "creator", "verified": false, "steps": 12, "examples": 0, "pitfalls": 0, "quality": 2.5, "lines": 150, "desc": "Infographics: 21 layouts x 21 styles (信息图, 可视化).", "size": 10.5, "author": "", "version": "", "tools": [], "tags": ["infographic", "visualization"], "dependencies": []}, {"id": "architecture-diagram", "name": "architecture-diagram", "qualified_name": "creative/architecture-diagram", "namespace": "creative", "color": 916074, "complexity": "high", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 1, "lines": 77, "desc": "Dark-themed SVG architecture/cloud/infra diagrams as HTML.", "size": 7.8, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "pixel-art", "name": "pixel-art", "qualified_name": "creative/pixel-art", "namespace": "creative", "color": 916074, "complexity": "low", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 60, "desc": "Pixel art w/ era palettes (NES, Game Boy, PICO-8).", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "manim-video", "name": "manim-video", "qualified_name": "creative/manim-video", "namespace": "creative", "color": 916074, "complexity": "high", "role": "creator", "verified": false, "steps": 17, "examples": 10, "pitfalls": 0, "quality": 5, "lines": 322, "desc": "Manim CE animations: 3Blue1Brown math/algo videos.", "size": 15, "author": "", "version": "", "tools": [], "tags": ["animation", "math", "video"], "dependencies": []}, {"id": "songwriting-and-ai-music", "name": "songwriting-and-ai-music", "qualified_name": "creative/songwriting-and-ai-music", "namespace": "creative", "color": 916074, "complexity": "high", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 74, "desc": "Songwriting craft and Suno AI music prompts.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "claude-design", "name": "claude-design", "qualified_name": "creative/claude-design", "namespace": "creative", "color": 916074, "complexity": "high", "role": "creator", "verified": true, "steps": 12, "examples": 10, "pitfalls": 0, "quality": 6.7, "lines": 290, "desc": "Design one-off HTML artifacts (landing, deck, prototype).", "size": 18, "author": "", "version": "1.5.0", "tools": [], "tags": [], "dependencies": []}, {"id": "gif-search", "name": "gif-search", "qualified_name": "creative/gif-search", "namespace": "creative", "color": 916074, "complexity": "low", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 42, "desc": "Search/download GIFs from Tenor via curl + jq.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "design-md", "name": "design-md", "qualified_name": "creative/design-md", "namespace": "creative", "color": 916074, "complexity": "medium", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 1, "lines": 62, "desc": "Author/validate/export Google's DESIGN.md token spec files.", "size": 7.8, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "baoyu-article-illustrator", "name": "baoyu-article-illustrator", "qualified_name": "creative/baoyu-article-illustrator", "namespace": "creative", "color": 916074, "complexity": "medium", "role": "creator", "verified": false, "steps": 12, "examples": 0, "pitfalls": 0, "quality": 2.5, "lines": 165, "desc": "Article illustrations: type × style × palette consistency.", "size": 10.5, "author": "", "version": "", "tools": [], "tags": ["article", "illustration"], "dependencies": []}, {"id": "pretext", "name": "pretext", "qualified_name": "creative/pretext", "namespace": "creative", "color": 916074, "complexity": "medium", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 42, "desc": "Build creative browser demos with pretext.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "creative-ideation", "name": "creative-ideation", "qualified_name": "creative/creative-ideation", "namespace": "creative", "color": 916074, "complexity": "medium", "role": "planner", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 36, "desc": "Generate project ideas via creative constraints.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "opencode", "name": "opencode", "qualified_name": "autonomous-ai-agents/opencode", "namespace": "autonomous-ai-agents", "color": 16524132, "complexity": "high", "role": "orchestrator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 58, "desc": "Delegate coding to OpenCode CLI (features, PR review).", "size": 6, "author": "", "version": "", "tools": [], "tags": ["code", "agent", "open-source"], "dependencies": []}, {"id": "codex", "name": "codex", "qualified_name": "autonomous-ai-agents/codex", "namespace": "autonomous-ai-agents", "color": 16524132, "complexity": "high", "role": "orchestrator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 58, "desc": "Delegate coding to OpenAI Codex CLI (features, PRs).", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "claude-code", "name": "claude-code", "qualified_name": "autonomous-ai-agents/claude-code", "namespace": "autonomous-ai-agents", "color": 16524132, "complexity": "high", "role": "orchestrator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 58, "desc": "Claude AI coding assistant", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "roadmap-engine", "name": "roadmap-engine", "qualified_name": "autonomous-ai-agents/roadmap-engine", "namespace": "autonomous-ai-agents", "color": 16524132, "complexity": "high", "role": "orchestrator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 58, "desc": "Roadmap Autonomy Engine — long-horizon autonomous planning agent.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "openhue", "name": "openhue", "qualified_name": "smart-home/openhue", "namespace": "smart-home", "color": 9230731, "complexity": "low", "role": "controller", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 44, "desc": "Control Philips Hue lights, scenes, rooms via OpenHue CLI.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "spotify", "name": "spotify", "qualified_name": "media/spotify", "namespace": "media", "color": 16731947, "complexity": "low", "role": "player", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 59, "desc": "Play/search/queue Spotify music and manage playlists.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "songsee", "name": "songsee", "qualified_name": "media/songsee", "namespace": "media", "color": 16731947, "complexity": "low", "role": "analyzer", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 54, "desc": "Analyze audio spectrograms (mel, chroma, MFCC).", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "youtube-content", "name": "youtube-content", "qualified_name": "media/youtube-content", "namespace": "media", "color": 16731947, "complexity": "medium", "role": "researcher", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 1, "lines": 70, "desc": "Convert YouTube transcripts to summaries/blogs.", "size": 7.8, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "heartmula", "name": "heartmula", "qualified_name": "media/heartmula", "namespace": "media", "color": 16731947, "complexity": "low", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 47, "desc": "Generate songs from lyrics and tags.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "touchdesigner-mcp", "name": "touchdesigner-mcp", "qualified_name": "media/touchdesigner-mcp", "namespace": "media", "color": 16731947, "complexity": "high", "role": "controller", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 77, "desc": "Control a running TouchDesigner instance via twozero MCP server.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "native-mcp", "name": "native-mcp", "qualified_name": "mcp/native-mcp", "namespace": "mcp", "color": 4616095, "complexity": "high", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 50, "desc": "Native Model Context Protocol integration.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "findmy", "name": "findmy", "qualified_name": "apple/findmy", "namespace": "apple", "color": 6676094, "complexity": "low", "role": "tracker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 50, "desc": "Track Apple devices/AirTags via FindMy.app on macOS.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "apple-notes", "name": "apple-notes", "qualified_name": "apple/apple-notes", "namespace": "apple", "color": 6676094, "complexity": "medium", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 72, "desc": "Manage Apple Notes via memo CLI: create, search, edit.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "apple-reminders", "name": "apple-reminders", "qualified_name": "apple/apple-reminders", "namespace": "apple", "color": 6676094, "complexity": "medium", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 68, "desc": "Apple Reminders via remindctl: add, list, complete.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "imessage", "name": "imessage", "qualified_name": "apple/imessage", "namespace": "apple", "color": 6676094, "complexity": "medium", "role": "sender", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 60, "desc": "Send and receive iMessages/SMS via the imsg CLI on macOS.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "systematic-debugging", "name": "systematic-debugging", "qualified_name": "software-development/systematic-debugging", "namespace": "software-development", "color": 3033788, "complexity": "high", "role": "debugger", "verified": true, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 1, "lines": 89, "desc": "4-phase root cause debugging: understand bugs before fixing.", "size": 7.8, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "codebase-inspection", "name": "codebase-inspection", "qualified_name": "software-development/codebase-inspection", "namespace": "software-development", "color": 3033788, "complexity": "medium", "role": "reviewer", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 1, "lines": 70, "desc": "Inspect codebases w/ pygount: LOC, languages, ratios.", "size": 7.8, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "writing-plans", "name": "writing-plans", "qualified_name": "software-development/writing-plans", "namespace": "software-development", "color": 3033788, "complexity": "medium", "role": "planner", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 50, "desc": "Write implementation plans: bite-sized tasks, paths, code.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "node-inspect-debugger", "name": "node-inspect-debugger", "qualified_name": "software-development/node-inspect-debugger", "namespace": "software-development", "color": 3033788, "complexity": "medium", "role": "debugger", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 58, "desc": "Debug Node.js via --inspect + Chrome DevTools Protocol CLI.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "python-debugpy", "name": "python-debugpy", "qualified_name": "software-development/python-debugpy", "namespace": "software-development", "color": 3033788, "complexity": "medium", "role": "debugger", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 58, "desc": "Debug Python: pdb REPL + debugpy remote (DAP).", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "spike", "name": "spike", "qualified_name": "software-development/spike", "namespace": "software-development", "color": 3033788, "complexity": "medium", "role": "explorer", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 50, "desc": "Throwaway experiments to validate an idea before build.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "test-driven-development", "name": "test-driven-development", "qualified_name": "software-development/test-driven-development", "namespace": "software-development", "color": 3033788, "complexity": "high", "role": "tester", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 76, "desc": "TDD methodology implementation", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "requesting-code-review", "name": "requesting-code-review", "qualified_name": "software-development/requesting-code-review", "namespace": "software-development", "color": 3033788, "complexity": "medium", "role": "reviewer", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 58, "desc": "Pre-commit review: security scan, quality gates, auto-fix.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "subagent-driven-development", "name": "subagent-driven-development", "qualified_name": "software-development/subagent-driven-development", "namespace": "software-development", "color": 3033788, "complexity": "high", "role": "orchestrator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 76, "desc": "Execute plans via delegate_task subagents (2-stage review).", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "ocr-and-documents", "name": "ocr-and-documents", "qualified_name": "software-development/ocr-and-documents", "namespace": "software-development", "color": 3033788, "complexity": "medium", "role": "processor", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 56, "desc": "Extract text from images and manage docs.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "e2e-testing", "name": "e2e-testing", "qualified_name": "software-development/e2e-testing", "namespace": "software-development", "color": 3033788, "complexity": "high", "role": "tester", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 67, "desc": "Playwright E2E testing patterns — critical user flows, Page Object Model.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "sketch", "name": "sketch", "qualified_name": "software-development/sketch", "namespace": "software-development", "color": 3033788, "complexity": "low", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 40, "desc": "Throwaway HTML mockups: 2-3 design variants to compare.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "popular-web-designs", "name": "popular-web-designs", "qualified_name": "creative/popular-web-designs", "namespace": "creative", "color": 916074, "complexity": "medium", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 57, "desc": "54 real design systems (Stripe, Linear, Vercel) as HTML/CSS.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "godmode", "name": "godmode", "qualified_name": "red-teaming/godmode", "namespace": "red-teaming", "color": 2899960, "complexity": "high", "role": "hacker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 47, "desc": "Jailbreak LLMs: Parseltongue, GODMODE, ULTRAPLINIAN.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "huggingface-hub", "name": "huggingface-hub", "qualified_name": "data-science/huggingface-hub", "namespace": "data-science", "color": 5065727, "complexity": "medium", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 72, "desc": "Search/download/upload HuggingFace models/datasets.", "size": 6, "author": "", "version": "", "tools": [], "tags": ["ml", "huggingface", "models"], "dependencies": []}, {"id": "jupyter-live-kernel", "name": "jupyter-live-kernel", "qualified_name": "data-science/jupyter-live-kernel", "namespace": "data-science", "color": 5065727, "complexity": "high", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 69, "desc": "Run Jupyter kernels in real-time.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "maps", "name": "maps", "qualified_name": "productivity/maps", "namespace": "productivity", "color": 3009120, "complexity": "low", "role": "navigator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 54, "desc": "Work with geographic maps and data.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "linear", "name": "linear", "qualified_name": "productivity/linear", "namespace": "productivity", "color": 3009120, "complexity": "medium", "role": "tracker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 74, "desc": "Track issues and projects with Linear.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "notion", "name": "notion", "qualified_name": "productivity/notion", "namespace": "productivity", "color": 3009120, "complexity": "medium", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 62, "desc": "Manage tasks and notes with Notion API.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "obsidian", "name": "obsidian", "qualified_name": "note-taking/obsidian", "namespace": "note-taking", "color": 4813496, "complexity": "medium", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 66, "desc": "Read, search, create, and edit notes in the Obsidian vault.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "powerpoint", "name": "powerpoint", "qualified_name": "productivity/powerpoint", "namespace": "productivity", "color": 3009120, "complexity": "medium", "role": "creator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 60, "desc": "Create and edit PowerPoint presentations.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "nano-pdf", "name": "nano-pdf", "qualified_name": "productivity/nano-pdf", "namespace": "productivity", "color": 3009120, "complexity": "low", "role": "processor", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 50, "desc": "Create and manipulate PDFs easily.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "airtable", "name": "airtable", "qualified_name": "productivity/airtable", "namespace": "productivity", "color": 3009120, "complexity": "medium", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 59, "desc": "Manage Airtable records with curl REST API.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "xurl", "name": "xurl", "qualified_name": "social-media/xurl", "namespace": "social-media", "color": 5741276, "complexity": "medium", "role": "poster", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 73, "desc": "X/Twitter via xurl CLI: post, search, DM, media, v2 API.", "size": 6, "author": "", "version": "", "tools": [], "tags": ["twitter", "social", "posting"], "dependencies": []}, {"id": "github-code-review", "name": "github-code-review", "qualified_name": "github/github-code-review", "namespace": "github", "color": 3914349, "complexity": "high", "role": "reviewer", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 80, "desc": "Review PRs: diffs, inline comments via gh or REST.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "github-issues", "name": "github-issues", "qualified_name": "github/github-issues", "namespace": "github", "color": 3914349, "complexity": "medium", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 72, "desc": "Create, triage, label, assign GitHub issues via gh or REST.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "github-auth", "name": "github-auth", "qualified_name": "github/github-auth", "namespace": "github", "color": 3914349, "complexity": "low", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 58, "desc": "GitHub auth setup: HTTPS tokens, SSH keys, gh CLI login.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "github-pr-workflow", "name": "github-pr-workflow", "qualified_name": "github/github-pr-workflow", "namespace": "github", "color": 3914349, "complexity": "medium", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 68, "desc": "GitHub PR lifecycle: branch, commit, open, CI, merge.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "github-repo-management", "name": "github-repo-management", "qualified_name": "github/github-repo-management", "namespace": "github", "color": 3914349, "complexity": "medium", "role": "manager", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 71, "desc": "Clone/create/fork repos; manage remotes, releases.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "himalaya", "name": "himalaya", "qualified_name": "email/himalaya", "namespace": "email", "color": 4935828, "complexity": "medium", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 60, "desc": "Himalaya CLI: IMAP/SMTP email from terminal.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "minecraft-modpack-server", "name": "minecraft-modpack-server", "qualified_name": "gaming/minecraft-modpack-server", "namespace": "gaming", "color": 1182677, "complexity": "high", "role": "host", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 86, "desc": "Host modded Minecraft servers (CurseForge, Modrinth).", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "pokemon-player", "name": "pokemon-player", "qualified_name": "gaming/pokemon-player", "namespace": "gaming", "color": 1182677, "complexity": "high", "role": "player", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 82, "desc": "Play Pokemon via headless emulator + RAM reads.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "hermes-agent", "name": "hermes-agent", "qualified_name": "devops/hermes-agent", "namespace": "devops", "color": 4897155, "complexity": "high", "role": "orchestrator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 88, "desc": "Complete guide to using and extending Hermes Agent — CLI setup, config, skills.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "hermes-agent-skill-authoring", "name": "hermes-agent-skill-authoring", "qualified_name": "devops/hermes-agent-skill-authoring", "namespace": "devops", "color": 4897155, "complexity": "medium", "role": "author", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 79, "desc": "Author in-repo SKILL.md: frontmatter, validator, structure.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "debugging-hermes-tui-commands", "name": "debugging-hermes-tui-commands", "qualified_name": "devops/debugging-hermes-tui-commands", "namespace": "devops", "color": 4897155, "complexity": "high", "role": "debugger", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 74, "desc": "Debug Hermes TUI slash commands: Python, gateway, Ink UI.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "webhook-subscriptions", "name": "webhook-subscriptions", "qualified_name": "devops/webhook-subscriptions", "namespace": "devops", "color": 4897155, "complexity": "medium", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 68, "desc": "Webhook subscriptions: event-driven agent runs.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "humanizer", "name": "humanizer", "qualified_name": "creative/humanizer", "namespace": "creative", "color": 916074, "complexity": "low", "role": "editor", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 40, "desc": "Humanize text: strip AI-isms and add real voice.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "plan", "name": "plan", "qualified_name": "software-development/plan", "namespace": "software-development", "color": 3033788, "complexity": "high", "role": "planner", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 52, "desc": "Strategic planning and organization", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "kanban-orchestrator", "name": "kanban-orchestrator", "qualified_name": "software-development/kanban-orchestrator", "namespace": "software-development", "color": 3033788, "complexity": "high", "role": "orchestrator", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 65, "desc": "Apply orchestrator routines with anti-temptation rules.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}, {"id": "kanban-worker", "name": "kanban-worker", "qualified_name": "software-development/kanban-worker", "namespace": "software-development", "color": 3033788, "complexity": "medium", "role": "worker", "verified": false, "steps": 0, "examples": 0, "pitfalls": 0, "quality": 0, "lines": 60, "desc": "Handle Hermes Kanban worker lifecycle.", "size": 6, "author": "", "version": "", "tools": [], "tags": [], "dependencies": []}], "edges": [{"src": "llm-wiki", "tgt": "arxiv", "type": "member-of", "label": "research"}, {"src": "llm-wiki", "tgt": "polymarket", "type": "member-of", "label": "research"}, {"src": "llm-wiki", "tgt": "research-paper-writing", "type": "member-of", "label": "research"}, {"src": "llm-wiki", "tgt": "blogwatcher", "type": "member-of", "label": "research"}, {"src": "arxiv", "tgt": "polymarket", "type": "member-of", "label": "research"}, {"src": "arxiv", "tgt": "research-paper-writing", "type": "member-of", "label": "research"}, {"src": "arxiv", "tgt": "blogwatcher", "type": "member-of", "label": "research"}, {"src": "polymarket", "tgt": "research-paper-writing", "type": "member-of", "label": "research"}, {"src": "polymarket", "tgt": "blogwatcher", "type": "member-of", "label": "research"}, {"src": "research-paper-writing", "tgt": "blogwatcher", "type": "member-of", "label": "research"}, {"src": "comfyui", "tgt": "p5js", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "excalidraw", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "baoyu-comic", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "baoyu-infographic", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "architecture-diagram", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "claude-design", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "ascii-art", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "ascii-video", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "pixel-art", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "manim-video", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "songwriting-and-ai-music", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "comfyui", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "excalidraw", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "baoyu-comic", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "baoyu-infographic", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "architecture-diagram", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "claude-design", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "ascii-art", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "ascii-video", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "pixel-art", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "manim-video", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "songwriting-and-ai-music", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "p5js", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "baoyu-comic", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "baoyu-infographic", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "architecture-diagram", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "claude-design", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "ascii-art", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "ascii-video", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "pixel-art", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "manim-video", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "songwriting-and-ai-music", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "excalidraw", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "baoyu-infographic", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "architecture-diagram", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "claude-design", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "ascii-art", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "ascii-video", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "pixel-art", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "manim-video", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "songwriting-and-ai-music", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "baoyu-comic", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "architecture-diagram", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "claude-design", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "ascii-art", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "ascii-video", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "pixel-art", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "manim-video", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "songwriting-and-ai-music", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "baoyu-infographic", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "claude-design", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "ascii-art", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "ascii-video", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "pixel-art", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "manim-video", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "songwriting-and-ai-music", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "architecture-diagram", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "ascii-art", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "ascii-video", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "pixel-art", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "manim-video", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "songwriting-and-ai-music", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "claude-design", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "ascii-art", "tgt": "ascii-video", "type": "member-of", "label": "creative"}, {"src": "ascii-art", "tgt": "pixel-art", "type": "member-of", "label": "creative"}, {"src": "ascii-art", "tgt": "manim-video", "type": "member-of", "label": "creative"}, {"src": "ascii-art", "tgt": "songwriting-and-ai-music", "type": "member-of", "label": "creative"}, {"src": "ascii-art", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "ascii-art", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "ascii-art", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "ascii-art", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "ascii-art", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "ascii-art", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "ascii-art", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "ascii-video", "tgt": "pixel-art", "type": "member-of", "label": "creative"}, {"src": "ascii-video", "tgt": "manim-video", "type": "member-of", "label": "creative"}, {"src": "ascii-video", "tgt": "songwriting-and-ai-music", "type": "member-of", "label": "creative"}, {"src": "ascii-video", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "ascii-video", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "ascii-video", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "ascii-video", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "ascii-video", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "ascii-video", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "ascii-video", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "pixel-art", "tgt": "manim-video", "type": "member-of", "label": "creative"}, {"src": "pixel-art", "tgt": "songwriting-and-ai-music", "type": "member-of", "label": "creative"}, {"src": "pixel-art", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "pixel-art", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "pixel-art", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "pixel-art", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "pixel-art", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "pixel-art", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "pixel-art", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "manim-video", "tgt": "songwriting-and-ai-music", "type": "member-of", "label": "creative"}, {"src": "manim-video", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "manim-video", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "manim-video", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "manim-video", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "manim-video", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "manim-video", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "manim-video", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "songwriting-and-ai-music", "tgt": "gif-search", "type": "member-of", "label": "creative"}, {"src": "songwriting-and-ai-music", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "songwriting-and-ai-music", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "songwriting-and-ai-music", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "songwriting-and-ai-music", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "songwriting-and-ai-music", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "songwriting-and-ai-music", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "gif-search", "tgt": "design-md", "type": "member-of", "label": "creative"}, {"src": "gif-search", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "gif-search", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "gif-search", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "gif-search", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "gif-search", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "design-md", "tgt": "baoyu-article-illustrator", "type": "member-of", "label": "creative"}, {"src": "design-md", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "design-md", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "design-md", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "design-md", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "baoyu-article-illustrator", "tgt": "pretext", "type": "member-of", "label": "creative"}, {"src": "baoyu-article-illustrator", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "baoyu-article-illustrator", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "baoyu-article-illustrator", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "pretext", "tgt": "creative-ideation", "type": "member-of", "label": "creative"}, {"src": "pretext", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "pretext", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "creative-ideation", "tgt": "popular-web-designs", "type": "member-of", "label": "creative"}, {"src": "creative-ideation", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "popular-web-designs", "tgt": "humanizer", "type": "member-of", "label": "creative"}, {"src": "opencode", "tgt": "codex", "type": "member-of", "label": "autonomous-ai-agents"}, {"src": "opencode", "tgt": "claude-code", "type": "member-of", "label": "autonomous-ai-agents"}, {"src": "opencode", "tgt": "roadmap-engine", "type": "member-of", "label": "autonomous-ai-agents"}, {"src": "codex", "tgt": "claude-code", "type": "member-of", "label": "autonomous-ai-agents"}, {"src": "codex", "tgt": "roadmap-engine", "type": "member-of", "label": "autonomous-ai-agents"}, {"src": "claude-code", "tgt": "roadmap-engine", "type": "member-of", "label": "autonomous-ai-agents"}, {"src": "systematic-debugging", "tgt": "codebase-inspection", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "writing-plans", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "node-inspect-debugger", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "python-debugpy", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "spike", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "test-driven-development", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "requesting-code-review", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "subagent-driven-development", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "ocr-and-documents", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "e2e-testing", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "sketch", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "systematic-debugging", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "writing-plans", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "node-inspect-debugger", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "python-debugpy", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "spike", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "test-driven-development", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "requesting-code-review", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "subagent-driven-development", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "ocr-and-documents", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "e2e-testing", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "sketch", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "codebase-inspection", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "node-inspect-debugger", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "python-debugpy", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "spike", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "test-driven-development", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "requesting-code-review", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "subagent-driven-development", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "ocr-and-documents", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "e2e-testing", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "sketch", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "writing-plans", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "node-inspect-debugger", "tgt": "python-debugpy", "type": "member-of", "label": "software-development"}, {"src": "node-inspect-debugger", "tgt": "spike", "type": "member-of", "label": "software-development"}, {"src": "node-inspect-debugger", "tgt": "test-driven-development", "type": "member-of", "label": "software-development"}, {"src": "node-inspect-debugger", "tgt": "requesting-code-review", "type": "member-of", "label": "software-development"}, {"src": "node-inspect-debugger", "tgt": "subagent-driven-development", "type": "member-of", "label": "software-development"}, {"src": "node-inspect-debugger", "tgt": "ocr-and-documents", "type": "member-of", "label": "software-development"}, {"src": "node-inspect-debugger", "tgt": "e2e-testing", "type": "member-of", "label": "software-development"}, {"src": "node-inspect-debugger", "tgt": "sketch", "type": "member-of", "label": "software-development"}, {"src": "node-inspect-debugger", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "node-inspect-debugger", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "node-inspect-debugger", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "python-debugpy", "tgt": "spike", "type": "member-of", "label": "software-development"}, {"src": "python-debugpy", "tgt": "test-driven-development", "type": "member-of", "label": "software-development"}, {"src": "python-debugpy", "tgt": "requesting-code-review", "type": "member-of", "label": "software-development"}, {"src": "python-debugpy", "tgt": "subagent-driven-development", "type": "member-of", "label": "software-development"}, {"src": "python-debugpy", "tgt": "ocr-and-documents", "type": "member-of", "label": "software-development"}, {"src": "python-debugpy", "tgt": "e2e-testing", "type": "member-of", "label": "software-development"}, {"src": "python-debugpy", "tgt": "sketch", "type": "member-of", "label": "software-development"}, {"src": "python-debugpy", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "python-debugpy", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "python-debugpy", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "spike", "tgt": "test-driven-development", "type": "member-of", "label": "software-development"}, {"src": "spike", "tgt": "requesting-code-review", "type": "member-of", "label": "software-development"}, {"src": "spike", "tgt": "subagent-driven-development", "type": "member-of", "label": "software-development"}, {"src": "spike", "tgt": "ocr-and-documents", "type": "member-of", "label": "software-development"}, {"src": "spike", "tgt": "e2e-testing", "type": "member-of", "label": "software-development"}, {"src": "spike", "tgt": "sketch", "type": "member-of", "label": "software-development"}, {"src": "spike", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "spike", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "spike", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "test-driven-development", "tgt": "requesting-code-review", "type": "member-of", "label": "software-development"}, {"src": "test-driven-development", "tgt": "subagent-driven-development", "type": "member-of", "label": "software-development"}, {"src": "test-driven-development", "tgt": "ocr-and-documents", "type": "member-of", "label": "software-development"}, {"src": "test-driven-development", "tgt": "e2e-testing", "type": "member-of", "label": "software-development"}, {"src": "test-driven-development", "tgt": "sketch", "type": "member-of", "label": "software-development"}, {"src": "test-driven-development", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "test-driven-development", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "test-driven-development", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "requesting-code-review", "tgt": "subagent-driven-development", "type": "member-of", "label": "software-development"}, {"src": "requesting-code-review", "tgt": "ocr-and-documents", "type": "member-of", "label": "software-development"}, {"src": "requesting-code-review", "tgt": "e2e-testing", "type": "member-of", "label": "software-development"}, {"src": "requesting-code-review", "tgt": "sketch", "type": "member-of", "label": "software-development"}, {"src": "requesting-code-review", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "requesting-code-review", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "requesting-code-review", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "subagent-driven-development", "tgt": "ocr-and-documents", "type": "member-of", "label": "software-development"}, {"src": "subagent-driven-development", "tgt": "e2e-testing", "type": "member-of", "label": "software-development"}, {"src": "subagent-driven-development", "tgt": "sketch", "type": "member-of", "label": "software-development"}, {"src": "subagent-driven-development", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "subagent-driven-development", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "subagent-driven-development", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "ocr-and-documents", "tgt": "e2e-testing", "type": "member-of", "label": "software-development"}, {"src": "ocr-and-documents", "tgt": "sketch", "type": "member-of", "label": "software-development"}, {"src": "ocr-and-documents", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "ocr-and-documents", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "ocr-and-documents", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "e2e-testing", "tgt": "sketch", "type": "member-of", "label": "software-development"}, {"src": "e2e-testing", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "e2e-testing", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "e2e-testing", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "sketch", "tgt": "plan", "type": "member-of", "label": "software-development"}, {"src": "sketch", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "sketch", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "plan", "tgt": "kanban-orchestrator", "type": "member-of", "label": "software-development"}, {"src": "plan", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "kanban-orchestrator", "tgt": "kanban-worker", "type": "member-of", "label": "software-development"}, {"src": "github-code-review", "tgt": "github-issues", "type": "member-of", "label": "github"}, {"src": "github-code-review", "tgt": "github-auth", "type": "member-of", "label": "github"}, {"src": "github-code-review", "tgt": "github-pr-workflow", "type": "member-of", "label": "github"}, {"src": "github-code-review", "tgt": "github-repo-management", "type": "member-of", "label": "github"}, {"src": "github-issues", "tgt": "github-auth", "type": "member-of", "label": "github"}, {"src": "github-issues", "tgt": "github-pr-workflow", "type": "member-of", "label": "github"}, {"src": "github-issues", "tgt": "github-repo-management", "type": "member-of", "label": "github"}, {"src": "github-auth", "tgt": "github-pr-workflow", "type": "member-of", "label": "github"}, {"src": "github-auth", "tgt": "github-repo-management", "type": "member-of", "label": "github"}, {"src": "github-pr-workflow", "tgt": "github-repo-management", "type": "member-of", "label": "github"}, {"src": "spotify", "tgt": "songsee", "type": "member-of", "label": "media"}, {"src": "spotify", "tgt": "youtube-content", "type": "member-of", "label": "media"}, {"src": "spotify", "tgt": "heartmula", "type": "member-of", "label": "media"}, {"src": "spotify", "tgt": "touchdesigner-mcp", "type": "member-of", "label": "media"}, {"src": "songsee", "tgt": "youtube-content", "type": "member-of", "label": "media"}, {"src": "songsee", "tgt": "heartmula", "type": "member-of", "label": "media"}, {"src": "songsee", "tgt": "touchdesigner-mcp", "type": "member-of", "label": "media"}, {"src": "youtube-content", "tgt": "heartmula", "type": "member-of", "label": "media"}, {"src": "youtube-content", "tgt": "touchdesigner-mcp", "type": "member-of", "label": "media"}, {"src": "heartmula", "tgt": "touchdesigner-mcp", "type": "member-of", "label": "media"}, {"src": "findmy", "tgt": "apple-notes", "type": "member-of", "label": "apple"}, {"src": "findmy", "tgt": "apple-reminders", "type": "member-of", "label": "apple"}, {"src": "findmy", "tgt": "imessage", "type": "member-of", "label": "apple"}, {"src": "apple-notes", "tgt": "apple-reminders", "type": "member-of", "label": "apple"}, {"src": "apple-notes", "tgt": "imessage", "type": "member-of", "label": "apple"}, {"src": "apple-reminders", "tgt": "imessage", "type": "member-of", "label": "apple"}, {"src": "maps", "tgt": "linear", "type": "member-of", "label": "productivity"}, {"src": "maps", "tgt": "notion", "type": "member-of", "label": "productivity"}, {"src": "maps", "tgt": "powerpoint", "type": "member-of", "label": "productivity"}, {"src": "maps", "tgt": "nano-pdf", "type": "member-of", "label": "productivity"}, {"src": "maps", "tgt": "airtable", "type": "member-of", "label": "productivity"}, {"src": "linear", "tgt": "notion", "type": "member-of", "label": "productivity"}, {"src": "linear", "tgt": "powerpoint", "type": "member-of", "label": "productivity"}, {"src": "linear", "tgt": "nano-pdf", "type": "member-of", "label": "productivity"}, {"src": "linear", "tgt": "airtable", "type": "member-of", "label": "productivity"}, {"src": "notion", "tgt": "powerpoint", "type": "member-of", "label": "productivity"}, {"src": "notion", "tgt": "nano-pdf", "type": "member-of", "label": "productivity"}, {"src": "notion", "tgt": "airtable", "type": "member-of", "label": "productivity"}, {"src": "powerpoint", "tgt": "nano-pdf", "type": "member-of", "label": "productivity"}, {"src": "powerpoint", "tgt": "airtable", "type": "member-of", "label": "productivity"}, {"src": "nano-pdf", "tgt": "airtable", "type": "member-of", "label": "productivity"}, {"src": "opencode", "tgt": "codex", "type": "workflow-peer", "label": "orchestrator"}, {"src": "opencode", "tgt": "claude-code", "type": "workflow-peer", "label": "orchestrator"}, {"src": "opencode", "tgt": "roadmap-engine", "type": "workflow-peer", "label": "orchestrator"}, {"src": "opencode", "tgt": "plan", "type": "workflow-peer", "label": "planner"}, {"src": "opencode", "tgt": "kanban-orchestrator", "type": "workflow-peer", "label": "orchestrator"}, {"src": "codex", "tgt": "claude-code", "type": "workflow-peer", "label": "orchestrator"}, {"src": "codex", "tgt": "roadmap-engine", "type": "workflow-peer", "label": "orchestrator"}, {"src": "codex", "tgt": "plan", "type": "workflow-peer", "label": "planner"}, {"src": "codex", "tgt": "kanban-orchestrator", "type": "workflow-peer", "label": "orchestrator"}, {"src": "claude-code", "tgt": "roadmap-engine", "type": "workflow-peer", "label": "orchestrator"}, {"src": "claude-code", "tgt": "plan", "type": "workflow-peer", "label": "planner"}, {"src": "claude-code", "tgt": "kanban-orchestrator", "type": "workflow-peer", "label": "orchestrator"}, {"src": "roadmap-engine", "tgt": "plan", "type": "workflow-peer", "label": "planner"}, {"src": "roadmap-engine", "tgt": "kanban-orchestrator", "type": "workflow-peer", "label": "orchestrator"}, {"src": "plan", "tgt": "kanban-orchestrator", "type": "workflow-peer", "label": "orchestrator"}, {"src": "systematic-debugging", "tgt": "node-inspect-debugger", "type": "workflow-peer", "label": "debugger"}, {"src": "systematic-debugging", "tgt": "python-debugpy", "type": "workflow-peer", "label": "debugger"}, {"src": "node-inspect-debugger", "tgt": "python-debugpy", "type": "workflow-peer", "label": "debugger"}, {"src": "codebase-inspection", "tgt": "requesting-code-review", "type": "workflow-peer", "label": "reviewer"}, {"src": "github-code-review", "tgt": "requesting-code-review", "type": "workflow-peer", "label": "reviewer"}, {"src": "arxiv", "tgt": "blogwatcher", "type": "workflow-peer", "label": "researcher"}, {"src": "arxiv", "tgt": "research-paper-writing", "type": "workflow-peer", "label": "researcher"}, {"src": "blogwatcher", "tgt": "research-paper-writing", "type": "workflow-peer", "label": "researcher"}, {"src": "test-driven-development", "tgt": "e2e-testing", "type": "workflow-peer", "label": "tester"}, {"src": "subagent-driven-development", "tgt": "e2e-testing", "type": "workflow-peer", "label": "tester"}, {"src": "subagent-driven-development", "tgt": "test-driven-development", "type": "workflow-peer", "label": "tester"}, {"src": "ocr-and-documents", "tgt": "nano-pdf", "type": "workflow-peer", "label": "processor"}, {"src": "maps", "tgt": "linear", "type": "workflow-peer", "label": "navigator"}, {"src": "spotify", "tgt": "heartmula", "type": "workflow-peer", "label": "creator"}, {"src": "spotify", "tgt": "openhue", "type": "workflow-peer", "label": "player"}, {"src": "openhue", "tgt": "findmy", "type": "workflow-peer", "label": "controller"}, {"src": "openhue", "tgt": "touchdesigner-mcp", "type": "workflow-peer", "label": "controller"}, {"src": "findmy", "tgt": "touchdesigner-mcp", "type": "workflow-peer", "label": "controller"}, {"src": "youtube-content", "tgt": "xurl", "type": "workflow-peer", "label": "poster"}, {"src": "youtube-content", "tgt": "himalaya", "type": "workflow-peer", "label": "worker"}, {"src": "arxiv", "tgt": "polymarket", "type": "workflow-peer", "label": "worker"}, {"src": "polymarket", "tgt": "research-paper-writing", "type": "workflow-peer", "label": "worker"}, {"src": "llm-wiki", "tgt": "arxiv", "type": "quality-hub", "label": ""}, {"src": "llm-wiki", "tgt": "comfyui", "type": "quality-hub", "label": ""}, {"src": "llm-wiki", "tgt": "claude-design", "type": "quality-hub", "label": ""}, {"src": "llm-wiki", "tgt": "manim-video", "type": "quality-hub", "label": ""}, {"src": "llm-wiki", "tgt": "baoyu-comic", "type": "quality-hub", "label": ""}, {"src": "llm-wiki", "tgt": "baoyu-infographic", "type": "quality-hub", "label": ""}, {"src": "arxiv", "tgt": "comfyui", "type": "quality-hub", "label": ""}, {"src": "arxiv", "tgt": "claude-design", "type": "quality-hub", "label": ""}, {"src": "arxiv", "tgt": "manim-video", "type": "quality-hub", "label": ""}, {"src": "arxiv", "tgt": "baoyu-comic", "type": "quality-hub", "label": ""}, {"src": "arxiv", "tgt": "baoyu-infographic", "type": "quality-hub", "label": ""}, {"src": "comfyui", "tgt": "claude-design", "type": "quality-hub", "label": ""}, {"src": "comfyui", "tgt": "manim-video", "type": "quality-hub", "label": ""}, {"src": "comfyui", "tgt": "baoyu-comic", "type": "quality-hub", "label": ""}, {"src": "comfyui", "tgt": "baoyu-infographic", "type": "quality-hub", "label": ""}, {"src": "claude-design", "tgt": "manim-video", "type": "quality-hub", "label": ""}, {"src": "claude-design", "tgt": "baoyu-comic", "type": "quality-hub", "label": ""}, {"src": "claude-design", "tgt": "baoyu-infographic", "type": "quality-hub", "label": ""}, {"src": "manim-video", "tgt": "baoyu-comic", "type": "quality-hub", "label": ""}, {"src": "manim-video", "tgt": "baoyu-infographic", "type": "quality-hub", "label": ""}, {"src": "baoyu-comic", "tgt": "baoyu-infographic", "type": "quality-hub", "label": ""}, {"src": "llm-wiki", "tgt": "blogwatcher", "type": "quality-hub", "label": ""}, {"src": "arxiv", "tgt": "blogwatcher", "type": "quality-hub", "label": ""}], "ns_colors": {"research": 686476, "creative": 916074, "autonomous-ai-agents": 16524132, "smart-home": 9230731, "media": 16731947, "mcp": 4616095, "apple": 6676094, "software-development": 3033788, "red-teaming": 2899960, "data-science": 5065727, "productivity": 3009120, "note-taking": 4813496, "social-media": 5741276, "github": 3914349, "email": 4935828, "gaming": 1182677, "devops": 4897155, "other": 9568766}, "edge_types": [["member-of", "Same namespace", 916074, 0.4], ["workflow-peer", "Same role", 3914349, 1.0], ["quality-hub", "Quality hub", 6296038, 1.2], ["tool-use", "Shared tools", 0x2ecc71, 0.6]], "edge_filter_default": {"member-of": false, "workflow-peer": true, "quality-hub": true, "tool-use": false}, "namespace_order": ["research", "creative", "autonomous-ai-agents", "smart-home", "media", "mcp", "apple", "software-development", "red-teaming", "data-science", "productivity", "note-taking", "social-media", "github", "email", "gaming", "devops", "other"]};
+
+const { nodes, edges, ns_colors, edge_types, edge_filter_default, namespace_order } = GRAPH_DATA;
+
+// ─── Filter state ──────────────────────────────────────────────────────
+const activeTypes = new Set(Object.keys(edge_filter_default).filter(k => edge_filter_default[k]));
+
+// ─── Build legend ──────────────────────────────────────────────────────
+const legendItem = document.getElementById('legend-item');
+namespace_order.forEach(ns => {
+  const c = ns_colors[ns];
+  if (!c) return;
+  const row = document.createElement('div');
+  row.className = 'legend-row';
+  row.innerHTML = `<div class="dot" style="background:#${c.toString(16).padStart(6,'0')}"></div><span>${ns}</span>`;
+  legendItem.appendChild(row);
+});
+
+// ─── Build edge filter buttons ──────────────────────────────────────────
+const filterBar = document.getElementById('filter-bar');
+edge_types.forEach(([type, label, color]) => {
+  const count = edges.filter(e => e.type === type).length;
+  if (count === 0) return;
+  const btn = document.createElement('button');
+  const isOn = edge_filter_default[type];
+  btn.className = 'filter-btn' + (isOn ? ' on' : '');
+  btn.dataset.type = type;
+  btn.innerHTML = `<span class="dot" style="background:#${color.toString(16).padStart(6,'0')}"></span>${label}<span class="count">${count}</span>`;
+  btn.addEventListener('click', () => {
+    if (activeTypes.has(type)) {
+      activeTypes.delete(type);
+      btn.classList.remove('on');
+    } else {
+      activeTypes.add(type);
+      btn.classList.add('on');
     }
+    rebuildGraph();
+  });
+  filterBar.appendChild(btn);
+});
 
-    // Skill nodes (89 skills)
-    const skillCats = [
-      ['autonomous-ai-agents',['claude-code','codex','hermes-agent','opencode','kanban-codex-lane','multi-provider-llm-backoff','roadmap-engine','self-improvement-engine']],
-      ['agents',['main','zoul','codi','coach','researcher','planner','coder','reviewer','knowledge-manager','automator','browser-agent','journal','nginxmanagerbot','mediamaker','heartbeat','curriculum-design','ubd-docx-generator','zoul-delegation','zoul-soul','react-agent']],
-      ['creative',['ascii-art','ascii-video','baoyu-article-illustrator','baoyu-comic','baoyu-infographic','claude-design','comfyui','design-md','excalidraw','humanizer','ideation','manim-video','p5js','pixel-art','popular-web-designs','pretext','sketch','songwriting-and-ai-music','touchdesigner-mcp','architecture-diagram']],
-      ['data-science',['jupyter-live-kernel']],
-      ['devops',['agent-os-architecture','canary-watch','casaos-webhook-emitter-impl','context-budget','cost-aware-llm-pipeline','deployment-patterns','docker-patterns','git-workflow','go','hermes-docker-sync-setup','hermes-docker-workflow','infrastructure-as-code','kanban-orchestrator','kanban-worker','multi-provider-api-calls','nanobot-to-hermes-migration','poker-training-platform','repo-catalog','repo-init','webhook-subscriptions']],
-      ['dogfood',['dogfood']],
-      ['email',['himalaya']],
-      ['gaming',['minecraft-modpack-server','pokemon-player']],
-      ['github',['codebase-inspection','github-auth','github-code-review','github-issues','github-pr-workflow','github-repo-management','repo-discovery']],
-      ['mcp',['native-mcp']],
-      ['media',['gif-search','heartmula','songsee','spotify','youtube-content']],
-      ['mlops',['huggingface-hub','evaluating-llms-harness','weights-and-biases','llama-cpp','obliteratus','outlines','serving-llms-vllm','audiocraft-audio-generation','segment-anything-model','dspy','axolotl','fine-tuning-with-trl','unsloth']],
-      ['morning-briefing',['morning-briefing']],
-      ['note-taking',['obsidian']],
-      ['openclaw-imports',['affine-logger','api-gateway','automation-workflows','gcalcli-calendar','gmail','hybrid-orchestrator','notion-api','sonoscli','self-improvement']],
-      ['planning',['blueprint','nanobot-integration-plan','product-lens']],
-      ['productivity',['airtable','automation-workflows','google-workspace','linear','maps','nano-pdf','notion','ocr-and-documents','powerpoint','teams-meeting-pipeline','teac-assignment-writing','university-essay']],
-      ['red-teaming',['godmode']],
-      ['repo-transmute',['repo-transmute']],
-      ['research',['arxiv','blogwatcher','html-in-canvas-monitor','llm-wiki','polymarket']],
-      ['smart-home',['openhue']],
-      ['social-media',['xurl']],
-      ['yuanbao',['yuanbao']],
-      ['software-development',['architecture-decision-records','autonomous-development','benchmark','coding-standards','debugging-hermes-tui-commands','e2e-testing','hermes-agent-skill-authoring','node-inspect-debugger','plan','python-debugpy','requesting-code-review','security-review','skill-selector','skill-selector-prep','spike','structured-code-review','subagent-driven-development','svelte-development','systematic-debugging','test-driven-development','vite-patterns','writing-plans']],
-    ];
+// ─── Stats ──────────────────────────────────────────────────────────────
+const stats = document.getElementById('graph-stats');
+stats.innerHTML = `<span>${nodes.length}</span> nodes · <span>${edges.length}</span> edges · click node for details`;
 
-    for (const [cat, names] of skillCats) {
-      for (const name of names) {
-        nodes.push(makeNode(name, name, 'skill', cat, categoryLabels[cat] || cat));
+let graph = null;
+
+function filteredEdges() {
+  return edges.filter(e => activeTypes.has(e.type));
+}
+
+function rebuildGraph() {
+  const fEdges = filteredEdges();
+
+  const gEdges = fEdges.map(e => ({
+    source: e.src,
+    target: e.tgt,
+    color: edgeColorFor(e.type),
+    width: edgeWidthFor(e.type),
+  }));
+
+  if (graph) {
+    graph.graphData({ nodes, links: gEdges });
+    return;
+  }
+
+  const container = document.getElementById('graph-container');
+  graph = ForceGraph()(container)
+    .graphData({ nodes, links: gEdges })
+    .nodeId('id')
+    .nodeLabel(n => `${n.name} (${n.namespace})`)
+    .nodeVal('size')
+    .nodeColor(n => `#${n.color.toString(16).padStart(6,'0')}`)
+    .linkColor(() => '#2a2a3a')
+    .linkWidth(1.5)
+    .linkDirectionalParticles(0)
+    .backgroundColor('#0d0d14')
+    .onNodeClick(showDetail)
+    .onBackgroundClick(() => hideDetail())
+    .nodeCanvasObjectMode(() => 'after')
+    .nodeCanvasObject((node, ctx) => {
+      if (node.verified) {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.size + 2.5, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#4ecb71';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
       }
-    }
+    });
 
-    // Core agents
-    const agents = ['main','zoul','codi','coach','researcher','planner','coder','reviewer','knowledge-manager','automator','browser-agent','journal','nginxmanagerbot','mediamaker','heartbeat','curriculum-design','ubd-docx-generator','zoul-delegation','zoul-soul','react-agent'];
-    for (const a of agents) {
-      nodes.push(makeNode(a, a, 'agent', 'agents', 'Core agent'));
-    }
+  graph.zoomToFit(400, 60);
+}
 
-    // Memory nodes
-    const memNodes = [
-      ['hermes-agent','Hermes Agent setup','skill: hermes-agent, config at ~/.hermes/, bootstrap via curl'],
-      ['repo-transmute','Vision-driven migration','features-list repo, AST extraction, Playwright screenshots'],
-      ['HWC','Hermes Web Computer','Go+Svelte5, phase engine, state dir, cron every 30m'],
-      ['Essay workflow','.md→humanize→.docx→Drive','Times NR 12pt, double-space, cite Kublin/Ebrey not WSU materials'],
-      ['Bootstrap','One-curl setup','GITHUB_TOKEN env var, PAT required, test before push'],
-      ['Multi-agent','Zoul orchestration','delegate_task, subagent patterns, max 3 concurrent'],
-      ['HWC theme','Solid #191919','ΔE<8 vs reference, screenshot via chrome-headless→GAPI'],
-    ];
-    for (const [id, label, desc] of memNodes) {
-      nodes.push(makeNode(id, label, 'memory', 'memory', desc));
-    }
+function edgeColorFor(type) {
+  const f = edge_types.find(e => e[0] === type);
+  return f ? `#${f[2].toString(16).padStart(6,'0')}` : '#333';
+}
 
-    // Projects
-    const projNodes = [
-      ['hermes-sync','ChonSong/hermes-sync','Cron: Mon 9am'],
-      ['hermes-agent','ChonSong/hermes-agent','Fork of upstream'],
-      ['seans-reporepo','ChonSong/seans-reporepo','Cron: Mon 9am'],
-      ['repo-transmute-v2','ChonSong/repo-transmute','Vision-driven migration v2, /opt/data/'],
-    ];
-    for (const [id, label, desc] of projNodes) {
-      nodes.push(makeNode(id, label, 'project', 'project', desc));
-    }
+function edgeWidthFor(type) {
+  const f = edge_types.find(e => e[0] === type);
+  return f ? f[3] : 1;
+}
 
-    // Config
-    const configNodes = [
-      ['~/.hermes/config.yaml','Config file','root config.yaml, NOT in config/ dir'],
-      ['~/.hermes/memory/','Daily memory','YYYY-MM-DD.md files'],
-      ['~/.hermes/memories/','Long-term memory','MEMORY.md (main), USER.md (profile)'],
-      ['~/.hermes/skills/','Skills dir','SKILL.md files, ~89 skills'],
-      ['~/.hermes/','Home dir','Hermes state directory'],
-    ];
-    for (const [id, label, desc] of configNodes) {
-      nodes.push(makeNode(id, label, 'config', 'config', desc));
-    }
+// ─── Detail panel ───────────────────────────────────────────────────────
+const panel = document.getElementById('detail-panel');
+const emptyState = document.getElementById('empty-state');
 
-    // Links: category → skill
-    const catNodes = {};
-    for (const n of nodes) {
-      if (n.type === 'skill' && n.category) {
-        if (!catNodes[n.category]) catNodes[n.category] = makeNode(n.category, categoryLabels[n.category] || n.category, 'category', n.category, 'Category');
-        links.push({ source: n.category, target: n.id, color: 0x555555, width: 1 });
-      }
-    }
-    // Agent links
-    for (const a of agents) {
-      links.push({ source: 'zoul', target: a, color: 0xc07bd4, width: 2 });
-    }
-    // Memory links
-    links.push({ source: 'HWC', target: 'hermes-agent', color: 0xd97b5b, width: 1 });
-    links.push({ source: 'repo-transmute-v2', target: 'repo-transmute', color: 0x5bc4c4, width: 1 });
-    links.push({ source: 'Essay workflow', target: 'university-essay', color: 0xd97b5b, width: 1 });
-    links.push({ source: 'Bootstrap', target: 'hermes-agent', color: 0x7ec87a, width: 1 });
+function showDetail(node) {
+  emptyState.style.display = 'none';
+  panel.classList.add('visible');
 
-    // Project links
-    links.push({ source: 'seans-reporepo', target: 'repo-transmute-v2', color: 0xd4c45b, width: 1 });
+  document.getElementById('detail-name').textContent = node.name;
+  document.getElementById('detail-ns').textContent = node.namespace + ' / ' + node.role;
 
-    // Config links
-    links.push({ source: 'hermes-agent', target: '~/.hermes/config.yaml', color: 0x888888, width: 1 });
-    links.push({ source: 'hermes-agent', target: '~/.hermes/memory/', color: 0x888888, width: 1 });
-    links.push({ source: 'hermes-agent', target: '~/.hermes/skills/', color: 0x888888, width: 1 });
-    links.push({ source: 'HWC', target: '~/.hermes/', color: 0x888888, width: 1 });
+  // Qualified name + copy button
+  document.getElementById('detail-qname').textContent = node.qualified_name;
+  const copyIcon = document.getElementById('copy-qname');
+  copyIcon.textContent = '⎘';
+  copyIcon.classList.remove('copied');
+  copyIcon.onclick = () => {
+    navigator.clipboard.writeText(node.qualified_name).then(() => {
+      copyIcon.textContent = '✓';
+      copyIcon.classList.add('copied');
+      setTimeout(() => {
+        copyIcon.textContent = '⎘';
+        copyIcon.classList.remove('copied');
+      }, 1500);
+    });
+  };
 
-    const data = { nodes, links };
+  // Badges
+  const badges = document.getElementById('detail-badges');
+  badges.innerHTML = '';
+  const badgeVer = document.createElement('span');
+  badgeVer.className = 'badge ' + (node.verified ? 'badge-verified' : 'badge-unverified');
+  badgeVer.textContent = node.verified ? '✓ verified' : 'unverified';
+  badges.appendChild(badgeVer);
 
-    // ── Legend ─────────────────────────────────────────────────────────────────
-    const legend = document.getElementById('legend');
-    const types = [
-      { type: 'skill', color: '#5b8fd9', label: 'Skill' },
-      { type: 'agent', color: '#c07bd4', label: 'Agent' },
-      { type: 'category', color: '#888888', label: 'Category' },
-      { type: 'memory', color: '#d97b5b', label: 'Memory' },
-      { type: 'project', color: '#d4c45b', label: 'Project' },
-      { type: 'config', color: '#7ec87a', label: 'Config/Dir' },
-    ];
-    for (const t of types) {
-      const div = document.createElement('div');
-      div.className = 'legend-item';
-      div.innerHTML = `<span class="dot" style="background:${t.color}"></span>${t.label}`;
-      legend.appendChild(div);
-    }
+  const badgeCpx = document.createElement('span');
+  badgeCpx.className = 'badge badge-complex-' + node.complexity;
+  badgeCpx.textContent = node.complexity + ' complexity';
+  badges.appendChild(badgeCpx);
 
-    // ── Graph ──────────────────────────────────────────────────────────────────
-    const graphEl = document.getElementById('graph');
+  // Quality bar
+  const qPct = Math.min(100, (node.quality / 10) * 100);
+  document.getElementById('quality-val').textContent = node.quality.toFixed(1);
+  document.getElementById('quality-fill').style.width = qPct + '%';
 
-    const Graph = ForceGraph(graphEl)
-      .graphData(data)
-      .backgroundColor('#0d0d0d')
-      .nodeLabel(n => `<strong>${n.label}</strong><br><span style="color:#aaa;font-size:11px">${n.desc || ''}</span>`)
-      .nodeRelSize(6)
-      .nodeColor(n => {
-        if (n.type === 'category') return '#888888';
-        if (n.type === 'skill') return '#' + (CATEGORY_COLORS[n.category] || 0x5b8fd9).toString(16).padStart(6,'0');
-        if (n.type === 'agent') return '#c07bd4';
-        if (n.type === 'memory') return '#d97b5b';
-        if (n.type === 'project') return '#d4c45b';
-        if (n.type === 'config') return '#7ec87a';
-        return '#888';
-      })
-      .linkColor(() => '#555')
-      .linkWidth(1)
-      .linkDirectionalParticles(0)
-      .d3VelocityDecay(0.3)
-      .cooldownTime(3000)
-      .onNodeClick(node => {
-        const catColor = n => '#' + (CATEGORY_COLORS[n.category] || 0x888888).toString(16).padStart(6,'0');
-        document.getElementById('detail').innerHTML =
-          `<strong style="font-size:15px">${node.label}</strong><br>
-          <span style="color:${catColor(node)}">${node.type}</span>
-          ${categoryLabels[node.category] ? ' • ' + categoryLabels[node.category] : ''}<br>
-          <span style="color:#888;font-size:12px">${node.desc || 'No description'}</span>`;
-      });
+  // Meta grid
+  const meta = document.getElementById('detail-meta');
+  meta.innerHTML = '';
+  [{ val: node.steps, lbl: 'Steps' }, { val: node.examples, lbl: 'Examples' }, { val: node.pitfalls, lbl: 'Pitfalls' }, { val: node.lines, lbl: 'Lines' }].forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'meta-item';
+    item.innerHTML = `<div class="val">${m.val}</div><div class="lbl">${m.lbl}</div>`;
+    meta.appendChild(item);
+  });
 
-    Graph.onEngineStop(() => Graph.zoomToFit(400, 50));
+  // Author / version
+  document.getElementById('detail-author').textContent = node.author || '—';
+  document.getElementById('detail-version').textContent = node.version || '—';
 
-    // ── Toggles ────────────────────────────────────────────────────────────────
-    const toggles = document.getElementById('toggles');
-    const toggleTypes = ['skill', 'category', 'memory', 'project', 'config'];
-    const hiddenTypes = new Set();
+  // Tools
+  const toolsSec = document.getElementById('detail-tools-section');
+  const toolsDiv = document.getElementById('detail-tools');
+  toolsDiv.innerHTML = '';
+  if (node.tools && node.tools.length > 0) {
+    toolsSec.style.display = 'flex';
+    node.tools.forEach(t => {
+      const chip = document.createElement('span');
+      chip.className = 'tool-chip';
+      chip.textContent = t;
+      toolsDiv.appendChild(chip);
+    });
+  } else {
+    toolsSec.style.display = 'none';
+  }
 
-    for (const type of toggleTypes) {
-      const btn = document.createElement('button');
-      btn.className = 'toggle-btn active';
-      btn.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-      btn.dataset.type = type;
-      btn.onclick = () => {
-        if (hiddenTypes.has(type)) {
-          hiddenTypes.delete(type);
-          btn.classList.add('active');
-        } else {
-          hiddenTypes.add(type);
-          btn.classList.remove('active');
-        }
-        updateVisibility();
-      };
-      toggles.appendChild(btn);
-    }
+  // Tags
+  const tagsSec = document.getElementById('detail-tags-section');
+  const tagsDiv = document.getElementById('detail-tags');
+  tagsDiv.innerHTML = '';
+  if (node.tags && node.tags.length > 0) {
+    tagsSec.style.display = 'flex';
+    node.tags.forEach(t => {
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.textContent = t;
+      tagsDiv.appendChild(chip);
+    });
+  } else {
+    tagsSec.style.display = 'none';
+  }
 
-    function updateVisibility() {
-      const visible = new Set(nodes.filter(n => !hiddenTypes.has(n.type)).map(n => n.id));
-      Graph.graphData({
-        nodes: nodes.filter(n => !hiddenTypes.has(n.type)),
-        links: links.filter(l => {
-          const src = typeof l.source === 'object' ? l.source.id : l.source;
-          const tgt = typeof l.target === 'object' ? l.target.id : l.target;
-          return visible.has(src) && visible.has(tgt);
-        })
-      });
-    }
-  </script>
+  // Description
+  document.getElementById('detail-desc').textContent = node.desc;
+
+  // Connections
+  const fEdges = filteredEdges();
+  const connList = document.getElementById('conn-list');
+  connList.innerHTML = '';
+  const conns = fEdges.filter(e => e.src === node.id || e.tgt === node.id);
+  document.getElementById('conn-count').textContent = conns.length + ' connections';
+
+  conns.forEach(e => {
+    const otherId = e.src === node.id ? e.tgt : e.src;
+    const other = nodes.find(n => n.id === otherId);
+    if (!other) return;
+    const item = document.createElement('div');
+    item.className = 'conn-item';
+    const typeClass = e.type.replace(/\s+/g, '-').toLowerCase();
+    item.innerHTML = `<div class="conn-dot" style="background:#${other.color.toString(16).padStart(6,'0')}"></div><span class="conn-name">${other.name}</span><span class="conn-type ${typeClass}">${e.label || e.type}</span>`;
+    item.addEventListener('click', () => showDetail(other));
+    connList.appendChild(item);
+  });
+}
+
+function hideDetail() {
+  panel.classList.remove('visible');
+  emptyState.style.display = '';
+}
+
+// ─── Init ───────────────────────────────────────────────────────────────
+rebuildGraph();
+</script>
 </body>
 </html>
