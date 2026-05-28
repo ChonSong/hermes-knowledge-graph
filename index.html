@@ -546,6 +546,9 @@
     <div id="legend">
       <h4>Namespaces</h4>
       <div id="legend-item"></div>
+      <hr style="border:none;border-top:1px solid #1e1e2e;margin:8px 0">
+      <h4 style="margin-bottom:6px">Edge Types</h4>
+      <div id="legend-edges"></div>
     </div>
     <div id="tooltip"></div>
     <div id="empty-state">
@@ -648,6 +651,20 @@ namespace_order.forEach(ns => {
   legendItem.appendChild(row);
 });
 
+// ─── Edge type color legend ──────────────────────────────────────────────
+const legendEdges = document.getElementById('legend-edges');
+// Build after TAG_SHARED is registered in edge_types
+setTimeout(() => {
+  edge_types.forEach(([type, label, color]) => {
+    const row = document.createElement('div');
+    row.className = 'legend-row';
+    row.style.opacity = '0.6';
+    row.style.cursor = 'default';
+    row.innerHTML = `<div class="dot" style="background:#${color.toString(16).padStart(6,'0')}"></div><span class="ns-label" style="font-size:10px">${label}</span>`;
+    legendEdges.appendChild(row);
+  });
+}, 0);
+
 // ─── Build edge filter buttons ──────────────────────────────────────────
 const filterBar = document.getElementById('filter-bar');
 edge_types.forEach(([type, label, color]) => {
@@ -701,7 +718,9 @@ document.getElementById('link-distance').addEventListener('input', (e) => {
 // ─── Tag edge system ─────────────────────────────────────────────────────
 const TAG_SHARED = 'tag-shared';
 const edgeFilterDefault = GRAPH_DATA.edge_filter_default;
-edgeFilterDefault[TAG_SHARED] = false; // off by default
+edgeFilterDefault[TAG_SHARED] = true; // on by default so users can see it working
+// Also add to activeTypes since it's now default-on
+activeTypes.add(TAG_SHARED);
 
 // Add to edge_types for filter button
 GRAPH_DATA.edge_types.push([TAG_SHARED, 'Shared tags', 0xF39C12, 0.5]);
