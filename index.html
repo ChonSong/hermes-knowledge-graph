@@ -596,6 +596,7 @@ const stats = document.getElementById('graph-stats');
 stats.innerHTML = `<span>${nodes.length}</span> nodes · <span>${edges.length}</span> edges · click node for details`;
 
 let graph = null;
+let graphInitialized = false;
 
 function filteredEdges() {
   return edges.filter(e => activeTypes.has(e.type));
@@ -613,6 +614,7 @@ function rebuildGraph() {
 
   if (graph) {
     graph.graphData({ nodes, links: gEdges });
+    graph.d3ReheatSimulation();
     return;
   }
 
@@ -638,9 +640,13 @@ function rebuildGraph() {
         ctx.lineWidth = 1.2;
         ctx.stroke();
       }
+    })
+    .onEngineStop(() => {
+      if (!graphInitialized && graph) {
+        graphInitialized = true;
+        graph.zoomToFit(400, 120);
+      }
     });
-
-  graph.zoomToFit(400, 60);
 }
 
 function edgeColorFor(type) {
