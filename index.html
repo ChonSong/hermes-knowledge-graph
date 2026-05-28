@@ -74,6 +74,29 @@
   }
   #search-clear.visible { display: inline; }
 
+  .header-control {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #555570;
+  }
+  .header-control select,
+  .header-control input[type="number"] {
+    background: #161622;
+    border: 1px solid #2a2a3a;
+    border-radius: 6px;
+    padding: 2px 6px;
+    color: #aaaacc;
+    font-size: 11px;
+    outline: none;
+    width: 70px;
+  }
+  .header-control select { width: auto; cursor: pointer; }
+  .header-control input[type="number"] { width: 45px; }
+  .header-control select:focus,
+  .header-control input[type="number"]:focus { border-color: #4a4a6a; }
+
   .filter-label {
     font-size: 11px;
     color: #555570;
@@ -466,6 +489,18 @@
 <header>
   <h1>Skills Graph</h1>
   <div id="graph-stats">—</div>
+  <div class="header-control"><span>Size:</span>
+    <select id="size-by">
+      <option value="quality">Quality</option>
+      <option value="steps">Steps</option>
+      <option value="examples">Examples</option>
+      <option value="lines">Lines</option>
+      <option value="size" selected>Size</option>
+    </select>
+  </div>
+  <div class="header-control"><span>Tag edge:</span>
+    <input type="number" id="tag-threshold" min="1" max="10" value="2">
+  </div>
   <div id="filter-bar">
     <span class="filter-label">Edges:</span>
     <input type="text" id="search-input" placeholder="Search skills…" autocomplete="off">
@@ -572,12 +607,13 @@ namespace_order.forEach(ns => {
 const filterBar = document.getElementById('filter-bar');
 edge_types.forEach(([type, label, color]) => {
   const count = edges.filter(e => e.type === type).length;
-  if (count === 0) return;
+  if (count === 0 && type !== TAG_SHARED) return;
   const btn = document.createElement('button');
   const isOn = edge_filter_default[type];
   btn.className = 'filter-btn' + (isOn ? ' on' : '');
   btn.dataset.type = type;
-  btn.innerHTML = `<span class="dot" style="background:#${color.toString(16).padStart(6,'0')}"></span>${label}<span class="count">${count}</span>`;
+  const c = count > 0 ? count : tagEdges.length;
+  btn.innerHTML = `<span class="dot" style="background:#${color.toString(16).padStart(6,'0')}"></span>${label}<span class="count">${c}</span>`;
   btn.addEventListener('click', () => {
     if (activeTypes.has(type)) {
       activeTypes.delete(type);
@@ -595,11 +631,93 @@ edge_types.forEach(([type, label, color]) => {
 const stats = document.getElementById('graph-stats');
 stats.innerHTML = `<span>${nodes.length}</span> nodes · <span>${edges.length}</span> edges · click node for details`;
 
+// ─── Tag edge system ─────────────────────────────────────────────────────
+const TAG_SHARED = 'tag-shared';
+const edgeFilterDefault = GRAPH_DATA.edge_filter_default;
+edgeFilterDefault[TAG_SHARED] = false; // off by default
+
+// Add to edge_types for filter button
+GRAPH_DATA.edge_types.push([TAG_SHARED, 'Shared tags', 0xF39C12, 0.5]);
+
+// Build tag index
+const tagIndex = {};
+nodes.forEach(n => {
+  (n.tags || []).forEach(t => {
+    if (!tagIndex[t]) tagIndex[t] = [];
+    tagIndex[t].push(n.id);
+  });
+});
+
+let tagThreshold = 2;
+let tagEdges = [];
+
+function computeTagEdges(threshold) {
+  const seen = new Set();
+  const result = [];
+  const groups = Object.values(tagIndex).filter(ids => ids.length >= threshold);
+  
+  for (const ids of groups) {
+    if (result.length > 15000) break; // safety cap
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const key = ids[i] < ids[j] ? `${ids[i]}|${ids[j]}` : `${ids[j]}|${ids[i]}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.push({ src: ids[i], tgt: ids[j], type: TAG_SHARED, label: `${threshold}+ tags` });
+        }
+      }
+    }
+  }
+  return result;
+}
+tagEdges = computeTagEdges(tagThreshold);
+document.getElementById('tag-threshold').addEventListener('change', (e) => {
+  tagThreshold = Math.max(1, Math.min(10, parseInt(e.target.value) || 2));
+  tagEdges = computeTagEdges(tagThreshold);
+  // Update the tag-shared filter button count
+  const tagBtn = document.querySelector('.filter-btn[data-type="tag-shared"] .count');
+  if (tagBtn) tagBtn.textContent = tagEdges.length;
+  rebuildGraph();
+});
+
+// ─── Size by system ──────────────────────────────────────────────────────
+let sizeField = 'size';
+const SIZE_RANGES = {
+  quality: { min: 0, max: 10 },
+  steps: { min: 0, max: 30 },
+  examples: { min: 0, max: 20 },
+  lines: { min: 0, max: 500 },
+  size: { min: 0, max: 30 },
+};
+
+function nodeSize(n) {
+  const field = sizeField;
+  const r = SIZE_RANGES[field] || { min: 0, max: 10 };
+  const raw = n[field] || r.min;
+  const range = (r.max - r.min) || 1;
+  return 3 + (Math.max(0, Math.min(1, (raw - r.min) / range))) * 22;
+}
+
+function updateSizeBy(field) {
+  sizeField = field;
+  if (graph) {
+    graph.nodeVal(nodeSize);
+    graph.d3ReheatSimulation();
+  }
+}
+document.getElementById('size-by').addEventListener('change', (e) => {
+  updateSizeBy(e.target.value);
+});
+
 let graph = null;
 let graphInitialized = false;
 
 function filteredEdges() {
-  return edges.filter(e => activeTypes.has(e.type));
+  let base = edges.filter(e => activeTypes.has(e.type));
+  if (activeTypes.has(TAG_SHARED)) {
+    base = base.concat(tagEdges);
+  }
+  return base;
 }
 
 function rebuildGraph() {
@@ -623,7 +741,7 @@ function rebuildGraph() {
     .graphData({ nodes, links: gEdges })
     .nodeId('id')
     .nodeLabel(n => `${n.name} (${n.namespace})`)
-    .nodeVal('size')
+    .nodeVal(nodeSize)
     .nodeColor(n => `#${n.color.toString(16).padStart(6,'0')}`)
     .linkColor(link => link.color || '#555')
     .linkWidth(link => link.width || 1)
