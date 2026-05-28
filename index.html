@@ -746,9 +746,7 @@ let chargeStrength = 80;
 let linkDist = 30;
 
 function filteredEdges() {
-  let base = edges.filter(e => activeTypes.has(e.type));
-  }
-  return base;
+  return edges.filter(e => activeTypes.has(e.type));
 }
 
 function rebuildGraph() {
