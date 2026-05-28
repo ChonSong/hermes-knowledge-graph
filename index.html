@@ -630,6 +630,10 @@ const { nodes, edges, ns_colors, edge_types, edge_filter_default, namespace_orde
 
 // ─── Filter state ──────────────────────────────────────────────────────
 const activeTypes = new Set(Object.keys(edge_filter_default).filter(k => edge_filter_default[k]));
+const TAG_SHARED = 'tag-shared'; // must be before any code that references it
+// member-of is too dense — disable by default
+edge_filter_default['member-of'] = false;
+activeTypes.delete('member-of');
 
 // ─── Namespace filter & legend ──────────────────────────────────────────
 let activeNamespaces = new Set(namespace_order.filter(ns => ns_colors[ns]));
@@ -726,11 +730,7 @@ document.getElementById('min-quality').addEventListener('input', (e) => {
 });
 
 // ─── Tag edge system ─────────────────────────────────────────────────────
-const TAG_SHARED = 'tag-shared';
-// member-of is too dense for 1500 nodes — keep it OFF by default
 const edgeFilterDefault = GRAPH_DATA.edge_filter_default;
-edgeFilterDefault['member-of'] = false;
-activeTypes.delete('member-of');
 edgeFilterDefault[TAG_SHARED] = true;
 // Also add to activeTypes since it's now default-on
 activeTypes.add(TAG_SHARED);
