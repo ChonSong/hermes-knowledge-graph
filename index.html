@@ -97,6 +97,30 @@
   .header-control select:focus,
   .header-control input[type="number"]:focus { border-color: #4a4a6a; }
 
+  .header-control input[type="range"] {
+    background: transparent;
+    width: 60px;
+    height: 12px;
+    cursor: pointer;
+    accent-color: #5a5a8a;
+  }
+  .header-control .range-val {
+    min-width: 24px;
+    text-align: right;
+    color: #8888aa;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .legend-row {
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .legend-row.on { opacity: 1; }
+  .legend-row:hover { opacity: 0.8; }
+  .legend-row .ns-label { color: #555570; transition: color 0.15s; }
+  .legend-row.on .ns-label { color: #9999bb; }
+
   .filter-label {
     font-size: 11px;
     color: #555570;
@@ -498,8 +522,16 @@
       <option value="size" selected>Size</option>
     </select>
   </div>
-  <div class="header-control"><span>Tag edge:</span>
+  <div class="header-control"><span>Tag:</span>
     <input type="number" id="tag-threshold" min="1" max="10" value="2">
+  </div>
+  <div class="header-control"><span>Spread:</span>
+    <input type="range" id="charge-strength" min="10" max="300" value="80">
+    <span class="range-val" id="charge-val">80</span>
+  </div>
+  <div class="header-control"><span>Link:</span>
+    <input type="range" id="link-distance" min="5" max="150" value="30">
+    <span class="range-val" id="link-val">30</span>
   </div>
   <div id="filter-bar">
     <span class="filter-label">Edges:</span>
@@ -592,14 +624,27 @@ const { nodes, edges, ns_colors, edge_types, edge_filter_default, namespace_orde
 // ─── Filter state ──────────────────────────────────────────────────────
 const activeTypes = new Set(Object.keys(edge_filter_default).filter(k => edge_filter_default[k]));
 
-// ─── Build legend ──────────────────────────────────────────────────────
+// ─── Namespace filter & legend ──────────────────────────────────────────
+let activeNamespaces = new Set(namespace_order.filter(ns => ns_colors[ns]));
+
 const legendItem = document.getElementById('legend-item');
 namespace_order.forEach(ns => {
   const c = ns_colors[ns];
   if (!c) return;
   const row = document.createElement('div');
-  row.className = 'legend-row';
-  row.innerHTML = `<div class="dot" style="background:#${c.toString(16).padStart(6,'0')}"></div><span>${ns}</span>`;
+  row.className = 'legend-row on';
+  row.innerHTML = `<div class="dot" style="background:#${c.toString(16).padStart(6,'0')}"></div><span class="ns-label">${ns}</span>`;
+  row.addEventListener('click', () => {
+    if (activeNamespaces.has(ns)) {
+      if (activeNamespaces.size <= 1) return; // keep at least one
+      activeNamespaces.delete(ns);
+      row.classList.remove('on');
+    } else {
+      activeNamespaces.add(ns);
+      row.classList.add('on');
+    }
+    rebuildGraph();
+  });
   legendItem.appendChild(row);
 });
 
@@ -629,7 +674,29 @@ edge_types.forEach(([type, label, color]) => {
 
 // ─── Stats ──────────────────────────────────────────────────────────────
 const stats = document.getElementById('graph-stats');
-stats.innerHTML = `<span>${nodes.length}</span> nodes · <span>${edges.length}</span> edges · click node for details`;
+function updateStats() {
+  const vCount = activeNamespaces.size;
+  const tCount = namespace_order.filter(ns => ns_colors[ns]).length;
+  stats.innerHTML = `<span>${nodes.length}</span> nodes · <span>${edges.length + tagEdges.length}</span> edges · ${vCount}/${tCount} ns`;
+}
+
+// ─── Slider controls ────────────────────────────────────────────────────
+document.getElementById('charge-strength').addEventListener('input', (e) => {
+  chargeStrength = parseInt(e.target.value);
+  document.getElementById('charge-val').textContent = chargeStrength;
+  if (graph) {
+    graph.d3Force('charge').strength(-chargeStrength);
+    graph.d3ReheatSimulation();
+  }
+});
+document.getElementById('link-distance').addEventListener('input', (e) => {
+  linkDist = parseInt(e.target.value);
+  document.getElementById('link-val').textContent = linkDist;
+  if (graph) {
+    graph.d3Force('link').distance(linkDist);
+    graph.d3ReheatSimulation();
+  }
+});
 
 // ─── Tag edge system ─────────────────────────────────────────────────────
 const TAG_SHARED = 'tag-shared';
@@ -711,6 +778,8 @@ document.getElementById('size-by').addEventListener('change', (e) => {
 
 let graph = null;
 let graphInitialized = false;
+let chargeStrength = 80;
+let linkDist = 30;
 
 function filteredEdges() {
   let base = edges.filter(e => activeTypes.has(e.type));
@@ -721,9 +790,16 @@ function filteredEdges() {
 }
 
 function rebuildGraph() {
-  const fEdges = filteredEdges();
+  // Filter nodes by active namespaces
+  const nsSet = activeNamespaces;
+  const visibleNodes = nodes.filter(n => nsSet.has(n.namespace));
+  const visibleIds = new Set(visibleNodes.map(n => n.id));
 
-  const gEdges = fEdges.map(e => ({
+  const fEdges = filteredEdges();
+  // Only keep edges where BOTH endpoints are visible
+  const nsFiltered = fEdges.filter(e => visibleIds.has(e.src) && visibleIds.has(e.tgt));
+
+  const gEdges = nsFiltered.map(e => ({
     source: e.src,
     target: e.tgt,
     color: edgeColorFor(e.type),
@@ -731,14 +807,16 @@ function rebuildGraph() {
   }));
 
   if (graph) {
-    graph.graphData({ nodes, links: gEdges });
+    graph.graphData({ nodes: visibleNodes, links: gEdges });
+    graph.d3Force('charge').strength(-chargeStrength);
+    graph.d3Force('link').distance(linkDist);
     graph.d3ReheatSimulation();
     return;
   }
 
   const container = document.getElementById('graph-container');
   graph = ForceGraph()(container)
-    .graphData({ nodes, links: gEdges })
+    .graphData({ nodes: visibleNodes, links: gEdges })
     .nodeId('id')
     .nodeLabel(n => `${n.name} (${n.namespace})`)
     .nodeVal(nodeSize)
@@ -769,6 +847,7 @@ function rebuildGraph() {
         graph.zoomToFit(400, 120);
       }
     });
+  updateStats();
 }
 
 function edgeColorFor(type) {
