@@ -696,13 +696,37 @@ function updateStats() {
 }
 
 // ─── Slider controls ────────────────────────────────────────────────────
+let freezeTimer = null;
+function enableSim() {
+  if (!graph) return;
+  graph.d3AlphaDecay(0.03).d3VelocityDecay(0.3).cooldownTicks(50);
+}
+function freezeSim() {
+  if (!graph) return;
+  graph.d3AlphaDecay(1).d3VelocityDecay(1).cooldownTicks(0);
+}
+
 document.getElementById('charge-strength').addEventListener('input', (e) => {
   chargeStrength = parseInt(e.target.value);
   document.getElementById('charge-val').textContent = chargeStrength;
+  if (graph) {
+    enableSim();
+    graph.d3Force('charge').strength(-chargeStrength);
+    graph.d3ReheatSimulation();
+    clearTimeout(freezeTimer);
+    freezeTimer = setTimeout(freezeSim, 2000);
+  }
 });
 document.getElementById('link-distance').addEventListener('input', (e) => {
   linkDist = parseInt(e.target.value);
   document.getElementById('link-val').textContent = linkDist;
+  if (graph) {
+    enableSim();
+    graph.d3Force('link').distance(linkDist);
+    graph.d3ReheatSimulation();
+    clearTimeout(freezeTimer);
+    freezeTimer = setTimeout(freezeSim, 2000);
+  }
 });
 
 // ─── Tag edge system ─────────────────────────────────────────────────────
