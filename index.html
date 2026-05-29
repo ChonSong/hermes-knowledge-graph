@@ -730,10 +730,10 @@ let tagEdges = [];
 function computeTagEdges(threshold) {
   const seen = new Set();
   const result = [];
-  const groups = Object.values(tagIndex).filter(ids => ids.length >= threshold);
+  const groups = Object.values(tagIndex).filter(ids => ids.length >= threshold && ids.length <= 100);
   
   for (const ids of groups) {
-    if (result.length > 15000) break; // safety cap
+    if (result.length > 5000) break; // hard cap to keep graph readable
     for (let i = 0; i < ids.length; i++) {
       for (let j = i + 1; j < ids.length; j++) {
         const key = ids[i] < ids[j] ? `${ids[i]}|${ids[j]}` : `${ids[j]}|${ids[i]}`;
