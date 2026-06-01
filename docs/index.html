@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sean Cheong — AI Agent Engineer</title>
   <meta name="description" content="Building autonomous AI systems. Hermes Agent, RepoTransmute, and the future of agentic development.">
+  <meta name="theme-color" content="#08090a">
+  <meta property="og:title" content="Sean Cheong — AI Agent Engineer">
+  <meta property="og:description" content="Building autonomous AI systems. Multi-agent orchestration, code transpilation pipelines, and self-improving AI infrastructure.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://chonsong.github.io">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%235e6ad2'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='system-ui' font-size='16' font-weight='600' fill='white'>SC</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;510;590&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -695,8 +702,8 @@
       I build <span class="gradient">agentic infrastructure</span> that runs while you sleep
     </h1>
     <p class="hero-sub">
-      Multi-agent orchestration, code transpilation pipelines, and self-improving AI systems.
-      146 skills. 20+ LLM providers. One autonomous loop.
+      Systems that ingest, transform, and ship code without human intervention.
+      I work on the orchestration layer — the part that coordinates agents, manages sessions, and keeps the whole thing from drifting.
     </p>
     <div class="hero-actions">
       <a href="#projects" class="btn-primary">View Projects ↓</a>
@@ -733,7 +740,7 @@
     <div class="section-header fade-in">
       <div class="section-label">Projects</div>
       <h2>What I'm building</h2>
-      <p class="section-desc">Autonomous systems that ingest, transform, and ship — without human intervention.</p>
+      <p class="section-desc">Systems I've built or maintain. Each one solves a real problem I ran into, not a tutorial exercise.</p>
     </div>
 
     <div class="projects-grid">
@@ -747,8 +754,8 @@
           </div>
         </div>
         <p class="project-desc">
-          Autonomous multi-agent system with 146 skills across 26 categories. Runs 24/7 via cron jobs,
-          handles code review, morning briefings, and multi-phase migrations. Self-improving — gets better every session.
+          An autonomous multi-agent system I contribute to. Runs 24/7 via cron jobs — handles code review,
+          morning briefings, multi-phase migrations. It learns procedures, not just facts, and gets more useful every session.
         </p>
         <div class="project-stats">
           <div class="project-stat">
@@ -789,7 +796,7 @@
         </div>
         <p class="project-desc">
           AI code transpilation pipeline. AST extraction → LLM rewrite → Playwright verification → self-healing.
-          Migrate entire codebases between frameworks automatically. 620 tests passing.
+          Migrate entire codebases between frameworks. The hard part is the verification — getting the AI to check its own work honestly.
         </p>
         <div class="project-stats">
           <div class="project-stat">
@@ -828,8 +835,8 @@
           </div>
         </div>
         <p class="project-desc">
-          Circuit breaker + lobster workflow for agent drift detection and oracle evaluation.
-          Monitors agent behavior in real-time, catches divergence before it compounds.
+          Circuit breaker and lobster workflow for catching agent drift in real time.
+          Monitors behavior, flags divergence before it compounds. I built this because agents that go off-track don't just fail — they fail quietly.
         </p>
         <div class="project-tags">
           <span class="tag">Python</span>
@@ -853,7 +860,7 @@
         </div>
         <p class="project-desc">
           Scans agent JSONL sessions and posts productivity reports to Discord.
-          Knows what your agents did while you were away.
+          I built it because I wanted to know what my agents actually did while I was away — not what they claimed to do.
         </p>
         <div class="project-tags">
           <span class="tag">Python</span>
@@ -876,8 +883,8 @@
           </div>
         </div>
         <p class="project-desc">
-          Vue.js sidebar + 5 views for CasaOS dashboard. Docker container management
-          with a clean, responsive interface.
+          Vue.js sidebar and dashboard views for CasaOS — Docker container management
+          that doesn't make you hate your homelab. The trick was making Docker accessible without dumbing it down.
         </p>
         <div class="project-tags">
           <span class="tag">Vue.js</span>
@@ -899,8 +906,8 @@
           </div>
         </div>
         <p class="project-desc">
-          Interactive force-graph visualization of 821 skills nodes across 26 categories.
-          Drag, zoom, filter — explore the entire Hermes skill ecosystem.
+          Interactive force-graph of 821 skill nodes across 26 categories.
+          Drag, zoom, filter. It's the best way to see how everything connects — and honestly, just fun to watch the physics sim settle.
         </p>
         <div class="project-tags">
           <span class="tag">force-graph</span>
@@ -993,14 +1000,14 @@
     <div class="section-header fade-in">
       <div class="section-label">Sessions</div>
       <h2>Every conversation, preserved</h2>
-      <p class="section-desc">Browse, search, and replay past agent sessions. Full lineage. Zero loss.</p>
+      <p class="section-desc">Every agent session is stored. This viewer lets you read them.</p>
     </div>
 
     <div class="session-cta fade-in">
-      <h3>Session Explorer</h3>
+      <h3>Session Viewer</h3>
       <p>
-        JSONL-based session viewer with real-time search, timeline navigation,
-        and replay. Every turn, every tool call, every decision — preserved and explorable.
+        Each session log is a JSONL file — every message, tool call, and decision.
+        Paste a file or load one from the server. Search by date, content, or event type.
       </p>
       <a href="session-viewer.html" class="btn-primary">Open Session Viewer →</a>
     </div>
@@ -1015,7 +1022,7 @@
       <a href="session-viewer.html">Session Viewer</a>
     </div>
     <div class="footer-copy">
-      Built with ♥ using the Linear design system · Pure HTML/CSS/JS · No build step
+      Sean Cheong · Sydney, Australia · Linear design system · Pure HTML/CSS/JS
     </div>
   </footer>
 
@@ -1053,3 +1060,4 @@
   </script>
 </body>
 </html>
+
