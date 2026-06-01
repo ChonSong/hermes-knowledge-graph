@@ -1480,7 +1480,12 @@ function scheduleCameraSave() {
   clearTimeout(cameraSaveTimer);
   cameraSaveTimer = setTimeout(() => {
     if (!graph) return;
-    const { x, y } = graph.center();
+    // FIX: force-graph 1.43.5 has no graph.center() method.
+    // Use screen2GraphCoords at the canvas center to derive the current
+    // pan/center, and graph.zoom() for the zoom level.
+    const w = graph.width();
+    const h = graph.height();
+    const { x, y } = graph.screen2GraphCoords(w / 2, h / 2);
     const zoom = graph.zoom();
     const state = JSON.parse(localStorage.getItem('kg-state') || '{}');
     state.camera = { x, y, zoom };
