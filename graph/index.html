@@ -986,6 +986,11 @@ const edgeFilterDefault = GRAPH_DATA.edge_filter_default;
 // Add to activeTypes only if default says on
 if (edgeFilterDefault[TAG_SHARED]) activeTypes.add(TAG_SHARED);
 
+// FIX: tagEdges must be declared before line that uses it in tagBtn innerHTML.
+// Original code declared `let tagEdges = []` ~25 lines later, causing a
+// ReferenceError (TDZ) and preventing the force-graph from rendering at all.
+let tagEdges = [];
+
 // Add to edge_types for filter button
 GRAPH_DATA.edge_types.push([TAG_SHARED, 'Shared tags', 0xF39C12, 0.5]);
 // Now build the tag-shared filter button (it wasn't in edge_types when we built the others)
@@ -1018,7 +1023,6 @@ nodes.forEach(n => {
 });
 
 let tagThreshold = 2;
-let tagEdges = [];
 
 function computeTagEdges(threshold) {
   const seen = new Set();
