@@ -926,6 +926,7 @@ function getNodeVal(n) {
 
 // ─── Filter state ──────────────────────────────────────────────────────
 const activeTypes = new Set(Object.keys(edge_filter_default).filter(k => edge_filter_default[k]));
+let activeNamespaces = new Set(namespace_order.filter(ns => ns_colors[ns]));
 
 // ─── Skill Groups legend (colour-grouped) ────────────────────────────────
 const legendGroups = document.getElementById('legend-groups');
@@ -1018,7 +1019,7 @@ seenColors.forEach(color => {
 });
 
 // ─── Namespace filter & legend ──────────────────────────────────────────
-let activeNamespaces = new Set(namespace_order.filter(ns => ns_colors[ns]));
+// (activeNamespaces declared above, shared with groups legend)
 
 const legendItem = document.getElementById('legend-item');
 namespace_order.forEach(ns => {
