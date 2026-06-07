@@ -190,7 +190,7 @@
     border: 1px solid #222236;
     border-radius: 8px;
     padding: 10px 12px;
-    max-height: 300px;
+    max-height: 600px;
     overflow-y: auto;
     min-width: 130px;
   }
@@ -213,6 +213,60 @@
     width: 8px; height: 8px;
     border-radius: 50%;
     flex-shrink: 0;
+  }
+
+  /* ── Grouped legend ─────────────────────────────────────────── */
+  .legend-group {
+    margin-bottom: 6px;
+  }
+  .legend-group-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #9999bb;
+    cursor: pointer;
+    padding: 3px 0;
+    user-select: none;
+  }
+  .legend-group-header:hover {
+    color: #bbbbe0;
+  }
+  .legend-group-header .chevron {
+    font-size: 9px;
+    color: #555570;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+    width: 8px;
+    text-align: center;
+  }
+  .legend-group-header .chevron.collapsed {
+    transform: rotate(-90deg);
+  }
+  .legend-group-header.no-collapse {
+    cursor: default;
+  }
+  .legend-group-header.no-collapse .chevron {
+    display: none;
+  }
+  .legend-group-items {
+    padding-left: 15px;
+    overflow: hidden;
+    transition: max-height 0.2s ease, opacity 0.15s;
+    max-height: 500px;
+    opacity: 1;
+  }
+  .legend-group-items.collapsed {
+    max-height: 0;
+    opacity: 0;
+  }
+  .legend-group-items .legend-row {
+    margin-bottom: 3px;
+    font-size: 10px;
+  }
+  .legend-group-items .legend-row:last-child {
+    margin-bottom: 0;
   }
 
   #tooltip {
@@ -720,6 +774,9 @@
     <div id="graph-info"></div>
     <div id="sidebar">
       <div id="legend">
+        <h4>Skill Groups</h4>
+        <div id="legend-groups"></div>
+        <hr style="border:none;border-top:1px solid #1e1e2e;margin:8px 0">
         <h4>Namespaces</h4>
         <div id="legend-item"></div>
         <hr style="border:none;border-top:1px solid #1e1e2e;margin:8px 0">
@@ -869,6 +926,96 @@ function getNodeVal(n) {
 
 // ─── Filter state ──────────────────────────────────────────────────────
 const activeTypes = new Set(Object.keys(edge_filter_default).filter(k => edge_filter_default[k]));
+
+// ─── Skill Groups legend (colour-grouped) ────────────────────────────────
+const legendGroups = document.getElementById('legend-groups');
+
+// Human-readable group names keyed by color integer
+const GROUP_NAMES = {
+  686476:   'Apple & MCP',
+  1752220:  'Voltagent Ecosystem',
+  3033724:  'Creative & Productivity',
+  3447003:  'Gaming & Social',
+  3914285:  'Community & Notes',
+  5163889:  'DevOps & Research',
+  15235646: 'Red Teaming',
+  9807270:  'GitHub',
+  10189516: 'Smart Home',
+  14641808: 'Media & AI Agents',
+  15223391: 'Software Development',
+  16524132: 'Awesome & MLOps',
+};
+
+// Build color → namespaces map from ns_colors
+const colorGroups = {};
+namespace_order.forEach(ns => {
+  const c = ns_colors[ns];
+  if (!c) return;
+  if (!colorGroups[c]) colorGroups[c] = [];
+  colorGroups[c].push(ns);
+});
+
+// Preserve insertion order from namespace_order (first-seen color order)
+const seenColors = [];
+namespace_order.forEach(ns => {
+  const c = ns_colors[ns];
+  if (!c || seenColors.includes(c)) return;
+  seenColors.push(c);
+});
+
+seenColors.forEach(color => {
+  const namespaces = colorGroups[color];
+  if (!namespaces || namespaces.length === 0) return;
+
+  const hex = '#' + color.toString(16).padStart(6, '0');
+  const groupName = GROUP_NAMES[color] || namespaces.join(' + ');
+  const isSingleton = namespaces.length === 1;
+
+  // Group container
+  const grp = document.createElement('div');
+  grp.className = 'legend-group';
+
+  // Header row with colour dot + label
+  const header = document.createElement('div');
+  header.className = 'legend-group-header' + (isSingleton ? ' no-collapse' : '');
+  header.innerHTML = `<span class="chevron">&#9660;</span><div class="dot" style="background:${hex}"></div><span>${groupName}</span>`;
+  grp.appendChild(header);
+
+  // Member list
+  const items = document.createElement('div');
+  items.className = 'legend-group-items';
+
+  namespaces.forEach(ns => {
+    const row = document.createElement('div');
+    row.className = 'legend-row on';
+    row.innerHTML = `<div class="dot" style="background:${hex};opacity:0.6"></div><span class="ns-label">${ns}</span>`;
+    row.addEventListener('click', () => {
+      if (activeNamespaces.has(ns)) {
+        if (activeNamespaces.size <= 1) return;
+        activeNamespaces.delete(ns);
+        row.classList.remove('on');
+      } else {
+        activeNamespaces.add(ns);
+        row.classList.add('on');
+      }
+      rebuildGraph();
+      saveState();
+    });
+    items.appendChild(row);
+  });
+
+  // Toggle collapse on header click (only for multi-ns groups)
+  if (!isSingleton) {
+    header.addEventListener('click', () => {
+      const chevron = header.querySelector('.chevron');
+      const isCollapsed = items.classList.toggle('collapsed');
+      if (chevron) chevron.classList.toggle('collapsed', isCollapsed);
+    });
+  }
+
+  grp.appendChild(items);
+  legendGroups.appendChild(grp);
+});
 
 // ─── Namespace filter & legend ──────────────────────────────────────────
 let activeNamespaces = new Set(namespace_order.filter(ns => ns_colors[ns]));
